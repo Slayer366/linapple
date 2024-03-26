@@ -495,6 +495,9 @@ void LoadConfiguration()
     LOAD(TEXT("JoyExitEnable"), &joyexitenable);
     LOAD(TEXT("JoyExitButton0"), &joyexitbutton0);
     LOAD(TEXT("JoyExitButton1"), &joyexitbutton1);
+
+    LOAD(TEXT("JoyInvertX"), &joyXAxisInvert);
+    LOAD(TEXT("JoyInvertY"), &joyYAxisInvert);
   }
 
   if (joytype[0] == 1) {

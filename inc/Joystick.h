@@ -18,6 +18,8 @@ extern unsigned int joy2axis1;
 extern unsigned int joyexitenable;
 extern unsigned int joyexitbutton0;
 extern unsigned int joyexitbutton1;
+extern unsigned int joyXAxisInvert;
+extern unsigned int joyYAxisInvert;
 extern bool joyquitevent;
 
 void CheckJoyExit();

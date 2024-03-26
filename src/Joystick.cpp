@@ -138,6 +138,8 @@ unsigned int joy2axis1 = 1;
 unsigned int joyexitenable = 0;
 unsigned int joyexitbutton0 = 8;
 unsigned int joyexitbutton1 = 9;
+unsigned int joyXAxisInvert = 0;
+unsigned int joyYAxisInvert = 0;
 bool joyquitevent = 0;
 
 SDL_Joystick *joy1 = NULL;
@@ -235,13 +237,23 @@ void CheckJoystick0() {
       }
     }
 
-
-
-
     xpos[0] += g_nPdlTrimX;
     ypos[0] += g_nPdlTrimY;
 
+    if(joyXAxisInvert > 0){
+      Sint16 val = xpos[0] - PDL_CENTRAL;
+      val = -val;
+      val += PDL_CENTRAL+1;
+      xpos[0]=val;
+    }
+    if(joyYAxisInvert > 0){
+      Sint16 val = ypos[0] - PDL_CENTRAL;
+      val = -val;
+      val += PDL_CENTRAL+1;
+      ypos[0]=val;
+    }
 
+    printf("XPos: %i    YPos: %i \n", xpos[0], ypos[0]);
   }
 }
 
