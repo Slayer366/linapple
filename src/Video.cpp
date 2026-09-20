@@ -40,6 +40,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <atomic>
 #include <condition_variable>
 
+// On-screen keyboard
+#include "OSK.h"
+
 // include character set bitmaps
 #include "../build/obj/charset40.xpm" // US/default
 #include "../build/obj/charset40_IIplus.xpm"
@@ -1884,12 +1887,20 @@ void VideoPerformRefresh() {
     if (bStatusShow && g_ShowLeds) {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
+    if (OSK_IsVisible()) {
+      // Draw on-screen keyboard if toggled on
+      OSK_Draw(screen);
+    }
     SDL_Flip(screen);  // flip SDL buffers
   } else if (bStatusShow) {
     if (g_ShowLeds) {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
+  }
+  if (OSK_IsVisible() && !anydirty && !bStatusShow) {
+    OSK_Draw(screen);
+    SDL_Flip(screen);
   }
   SetLastDrawnImage();
   redrawfull = 0;

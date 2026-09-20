@@ -42,6 +42,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include "asset.h"
 #include "MouseInterface.h"
 
+// On-screen keyboard
+#include "OSK.h"
+
 #define ENABLE_MENU 0
 
 SDL_Surface *apple_icon;
@@ -273,6 +276,20 @@ void FrameQuickState(int num, int mod)
 }
 
 void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
+
+  // OSK will be invoked using 'Esc' for now
+  if (OSK_IsVisible() && e->type != SDL_QUIT)
+  {
+    OSK_HandleEvent(e);
+    return;
+  }
+
+  if (e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_ESCAPE)
+  {
+    OSK_Show();
+    return;
+  }
+
   int mysym = e->key.keysym.sym; // keycode
   int mymod = e->key.keysym.mod; // some special keys flags
   int myscancode = e->key.keysym.scancode; // some special keys flags
@@ -320,6 +337,12 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
       break;
 
     case SDL_KEYDOWN:
+      if (mysym == SDLK_ESCAPE) {
+        // Toggle on-screen keyboard
+        OSK_Toggle();
+        break;
+      }
+
       if (mysym >= SDLK_0 && mysym <= SDLK_9 && mymod & KMOD_LCTRL) {
         FrameQuickState(mysym - SDLK_0, mymod);
         break;

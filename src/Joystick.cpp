@@ -42,7 +42,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #include "stdafx.h"
 #include "MouseInterface.h"
-
+#include "OSK.h"
 #include <iostream>
 
 #define  BUTTONTIME       5000
@@ -253,7 +253,7 @@ void CheckJoystick0() {
       ypos[0]=val;
     }
 
-    printf("XPos: %i    YPos: %i \n", xpos[0], ypos[0]);
+    //printf("XPos: %i    YPos: %i \n", xpos[0], ypos[0]);
   }
 }
 
@@ -292,6 +292,23 @@ void CheckJoystick1() {
 }
 
 // All globally accessible functions are below this line
+
+/* Add joystick enabled/disabled detection for OSK */
+bool JoyIsJoystick0Enabled()
+{
+  return joyinfo[joytype[0]].device == DEVICE_JOYSTICK;
+}
+
+SDL_Joystick *JoyGetJoystick0()
+{
+  return joy1;
+}
+
+unsigned int JoyGetJoystick0Index()
+{
+  return joy1index;
+}
+
 
 void JoyShutDown() {
   // First of all, let's close all existing SDL joysticks
