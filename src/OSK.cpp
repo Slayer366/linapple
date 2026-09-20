@@ -915,12 +915,19 @@ void OSK_Show()
          strcmp(deviceName, "RG40XX") == 0 ||
          strcmp(deviceName, "RG40XX H") == 0))
     {
-      // D-Pad is POV HAT on these units.  Leaving this here for posterity.
+        g_OSKDPadUp = 13;
+        g_OSKDPadDown = 14;
+        g_OSKDPadLeft = 15;
+        g_OSKDPadRight = 16;
     }
     else if (access("/dev/input/by-path/platform-soc@03000000:gpio_keys-event-joystick", F_OK) == 0)
     {
       // Controller device path for the RG35XX and RG40XX devices.
       // Evidently this is also the case for the Retroid Pocket Nova.
+        g_OSKDPadUp = 13;
+        g_OSKDPadDown = 14;
+        g_OSKDPadLeft = 15;
+        g_OSKDPadRight = 16;
     }
     else if (access("/dev/input/by-path/platform-odroidgo2-joypad-event-joystick", F_OK) == 0)
     {
