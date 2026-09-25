@@ -7,6 +7,7 @@ bool OSK_IsVisible();
 void OSK_Toggle();
 void OSK_Show();
 void OSK_Hide();
+void OSK_Cleanup();
 
 bool JoyIsJoystick0Enabled();
 SDL_Joystick *JoyGetJoystick0();
