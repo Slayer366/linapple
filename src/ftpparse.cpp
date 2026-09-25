@@ -218,10 +218,10 @@ int ftpparse(struct ftpparse *fp, char *buf, int len) {
   int i;
   int j;
   int state;
-  long size;
+  long size = 0;  // Address "Maybe Uninitialized" warning (older GCC)
   long year;
-  long month;
-  long mday;
+  long month = 0;  // Address "Maybe Uninitialized" warning (older GCC)
+  long mday = 0;  // Address "Maybe Uninitialized" warning (older GCC)
   long hour;
   long minute;
 
