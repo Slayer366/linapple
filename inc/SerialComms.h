@@ -53,7 +53,8 @@ public:
 
   void CommDestroy();
 
-  void CommSetSerialPort(unsigned int);
+// colinleroy - Basic fix for serial emulation
+//  void CommSetSerialPort(unsigned int);
 
   void CommUpdate(unsigned int);
 
@@ -61,12 +62,17 @@ public:
 
   unsigned int CommSetSnapshot(SS_IO_Comms *pSS);
 
-  unsigned int GetSerialPort() {
+// colinleroy - Basic fix for serial emulation
+//  unsigned int GetSerialPort() {
+  const char *GetSerialPort() {
     return m_dwSerialPort;
   }
 
-  void SetSerialPort(unsigned int dwSerialPort) {
-    m_dwSerialPort = dwSerialPort;
+// colinleroy - Basic fix for serial emulation
+//  void SetSerialPort(unsigned int dwSerialPort) {
+//    m_dwSerialPort = dwSerialPort;
+  void SetSerialPort(char *dwSerialPort) {
+    m_dwSerialPort = strdup(dwSerialPort);
   }
 
   static unsigned char SSC_IORead(unsigned short PC, unsigned short uAddr, unsigned char bWrite, unsigned char uValue, ULONG nCyclesLeft);
@@ -102,14 +108,18 @@ private:
 
   void CheckCommEvent(unsigned int dwEvtMask);
 
-  static unsigned int CommThread(LPVOID lpParameter);
+// colinleroy - Basic fix for serial emulation
+//  static unsigned int CommThread(LPVOID lpParameter);
+  static void *CommThread(void *lpParameter);
 
   bool CommThInit();
 
   void CommThUninit();
 
 private:
-  unsigned int m_dwSerialPort;
+// colinleroy - Basic fix for serial emulation
+//  unsigned int m_dwSerialPort;
+  const char *m_dwSerialPort;
 
   static SSC_DIPSW m_DIPSWDefault;
   SSC_DIPSW m_DIPSWCurrent;
@@ -130,7 +140,9 @@ private:
   unsigned int m_dwCommInactivity;
 
   unsigned char m_RecvBuffer[uRecvBufferSize];  // NB: More work required if >1 is used
-  volatile unsigned int m_vRecvBytes;
+// colinleroy - Basic fix for serial emulation
+//  volatile unsigned int m_vRecvBytes;
+  volatile int m_vRecvBytes;
 
   bool m_bTxIrqEnabled;
   bool m_bRxIrqEnabled;
