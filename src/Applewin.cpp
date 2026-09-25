@@ -66,6 +66,9 @@ By Mark Ormond.
 #include "AlertHooks.h"
 #endif
 
+// On-screen keyboard
+#include "OSK.h"
+
 // Satisfy modern compiler standards
 static char TITLE_APPLE_2_[] = TITLE_APPLE_2;
 static char TITLE_APPLE_2_PLUS_[] = TITLE_APPLE_2_PLUS;
@@ -1235,6 +1238,7 @@ int main(int argc, char *argv[])
     sg_SSC.CommDestroy();
     CpuDestroy();
     SpkrDestroy();
+    OSK_Cleanup();
     VideoDestroy();
     MemDestroy();
     MB_Destroy();
