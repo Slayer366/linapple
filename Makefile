@@ -40,6 +40,7 @@ SYMEXT      := SYM
 
 BUILDDIR    := build/$(OBJDIR)
 TARGETDIR   := build/$(BINDIR)
+OSKPNG      := $(TARGETDIR)/res/osk.png
 
 #Flags, Libraries and Includes
 
@@ -131,7 +132,7 @@ DSTIMGS := $(patsubst $(RESDIR)/%,$(BUILDDIR)/%,$(SRCIMGS:.$(IMGEXT)=.$(XPMEXT))
 SRCSYMS := $(wildcard $(RESDIR)/*.$(SYMEXT))
 DSTSYMS := $(patsubst $(RESDIR)/%,$(TARGETDIR)/%,$(SRCSYMS))
 
-all: resources $(TARGETDIR)/$(TARGET) symbolfiles
+all: resources $(TARGETDIR)/$(TARGET) symbolfiles $(OSKPNG)
 
 remake: distclean all
 
@@ -169,6 +170,10 @@ distclean: clean
 #Link
 $(TARGETDIR)/$(TARGET): $(OBJECTS)
 	$(CC) $(LFLAGS) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
+
+$(OSKPNG): $(RESDIR)/osk.png
+	@mkdir -p $(dir $@)
+	@cp $< $@
 
 #Compile
 $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
