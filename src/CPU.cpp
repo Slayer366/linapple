@@ -3734,7 +3734,7 @@ void CpuReset()
 {
   // 7 cycles
   regs.ps = (regs.ps | AF_INTERRUPT) & ~AF_DECIMAL;
-  regs.pc = *(WORD * )(mem + 0xFFFC);
+  regs.pc = *(WORD * )(mem + 0xFFFC); // 0xFFFC is the 6502 reset vector
   regs.sp = 0x0100 | ((regs.sp - 3) & 0xFF);
 
   regs.bJammed = 0;

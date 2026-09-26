@@ -44,10 +44,17 @@ OSKPNG      := $(TARGETDIR)/res/osk.png
 
 #Flags, Libraries and Includes
 
+ifdef SDL2
+SDL_CONFIG ?= sdl2-config
+SDL_CFLAGS = $(shell $(SDL_CONFIG) --cflags)
+SDL_LIBS = $(shell $(SDL_CONFIG) --libs)
+SDL_LIBS += $(shell pkg-config SDL2_image --libs)
+else
 SDL_CONFIG ?= sdl-config
 SDL_CFLAGS = $(shell $(SDL_CONFIG) --cflags)
 SDL_LIBS = $(shell $(SDL_CONFIG) --libs)
 SDL_LIBS +=  $(shell pkg-config SDL_image --libs)
+endif
 
 CURL_CONFIG ?= curl-config
 CURL_CFLAGS = $(shell $(CURL_CONFIG) --cflags)
@@ -70,12 +77,19 @@ CFLAGS += "-DREGISTRY_WRITEABLE=1"
 endif
 
 CFLAGS += -DASSET_DIR=\"$(DATADIR)\" -DVERSIONSTRING=\"$(VERSION)\"
+ifdef SDL2
+CFLAGS += -DSDL2
+endif
 CFLAGS += $(SDL_CFLAGS)
 CFLAGS += $(CURL_CFLAGS)
 # Do not complain about XPMs
 CFLAGS += -Wno-write-strings
 
+ifdef SDL2
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread
+else
 LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread -lX11
+endif
 INC    := -I$(INCDIR) -I/usr/local/include
 INCDEP := -I$(INCDIR)
 
@@ -116,7 +130,11 @@ Installed-Size: $(SIZE)
 Maintainer: LinApple team <https://github.com/linappleii/linapple/issues>
 Architecture: $(ARCH)
 Version: $(VERSION)
+ifdef SDL2
+Depends: libzip-dev, libsdl2-dev, libsdl2-image-dev, libcurl4-openssl-dev, zlib1g-dev, imagemagick
+else
 Depends: libzip-dev, libsdl1.2-dev, libsdl-image1.2-dev, libcurl4-openssl-dev, zlib1g-dev, imagemagick
+endif
 Homepage: https://github.com/linappleii/linapple
 Description: A Linux emulator for Apple ][+, IIe and Enhanced //e with Mockingboard support
 endef

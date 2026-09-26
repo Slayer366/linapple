@@ -504,12 +504,22 @@ void LoadConfiguration()
   }
 
   if (joytype[0] == 1) {
+#ifdef SDL2
+    printf("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
+           SDL_JoystickNameForIndex(joy1index), joy1button1, joy1button2, joy1axis0, joy1axis1);
+#else
     printf("Joystick 1 Index # = %i, Name = %s \nButton 1 = %i, Button 2 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy1index,
            SDL_JoystickName(joy1index), joy1button1, joy1button2, joy1axis0, joy1axis1);
+#endif
   }
   if (joytype[1] == 1) {
+#ifdef SDL2
+    printf("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
+           SDL_JoystickNameForIndex(joy2index), joy2button1, joy2axis0, joy2axis1);
+#else
     printf("Joystick 2 Index # = %i, Name = %s \nButton 1 = %i \nAxis 0 = %i,Axis 1 = %i\n", joy2index,
            SDL_JoystickName(joy2index), joy2button1, joy2axis0, joy2axis1);
+#endif
   }
 
   // default: use keyboard language according to environment
@@ -1042,7 +1052,11 @@ int main(int argc, char *argv[])
                                      {"state",    required_argument, 0, 0},
                                      {0,          0,                 0, 0}};
 
+#ifdef SDL2
+  // No XInitThreads
+#else
   XInitThreads();
+#endif
 
   while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) != -1) {
     switch (opt) {

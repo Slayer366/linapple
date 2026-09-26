@@ -177,6 +177,35 @@ void CheckJoystick0() {
       joybutton[1] = SDL_JoystickGetButton(joy1, joy1button2);
     }
 
+#ifdef SDL2
+	// add by trngaje for hat
+	switch(SDL_JoystickGetHat(joy1, 0))
+	{
+	case 1:
+		keydown[JK_UP] = true;
+		keydown[JK_DOWN] = false;
+		break;
+  case 2:
+		keydown[JK_RIGHT] = true;
+		keydown[JK_LEFT] = false;
+		break;
+  case 4:
+		keydown[JK_UP] = false;
+		keydown[JK_DOWN] = true;
+		break;
+  case 8:
+		keydown[JK_RIGHT] = false;
+		keydown[JK_LEFT] = true;
+		break;
+  default:
+		keydown[JK_UP] = false;
+		keydown[JK_DOWN] = false;
+		keydown[JK_RIGHT] = false;
+		keydown[JK_LEFT] = false;
+	}
+#endif
+	//printf("[trngaje] hat0 = %d\n", SDL_JoystickGetHat(joy1, 0)); // 1 (up),2 (right),4 (down),8 (left)
+
     xpos[0] = (SDL_JoystickGetAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
     ypos[0] = (SDL_JoystickGetAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
 
@@ -391,6 +420,41 @@ void JoyInitialize()
 //
 // Entry:
 void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
+#ifdef SDL2
+  switch (virtkey) {
+    case SDLK_DOWN:
+    case SDLK_KP_2:
+      if (g_nPdlTrimY < 64) {
+        g_nPdlTrimY++;
+      }
+      break;
+    case SDLK_KP_4:
+    case SDLK_LEFT:
+      if (g_nPdlTrimX > -64) {
+        g_nPdlTrimX--;
+      }
+      break;
+
+    case SDLK_KP_6:
+    case SDLK_RIGHT:
+      if (g_nPdlTrimX < 64) {
+        g_nPdlTrimX++;
+      }
+      break;
+    case SDLK_KP_8:
+    case SDLK_UP:
+      if (g_nPdlTrimY > -64) {
+        g_nPdlTrimY--;
+      }
+      break;
+    case SDLK_KP_5:
+    case SDLK_CLEAR:
+      g_nPdlTrimX = g_nPdlTrimY = 0;
+      break;
+      default:
+      break;
+  }
+#else
   switch (virtkey) {
     case SDLK_DOWN:
     case SDLK_KP2:
@@ -424,6 +488,7 @@ void JoyUpdateTrimViaKey(int virtkey) {  // Adjust trim?
       default:
       break;
   }
+#endif
 }
 
 bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
@@ -450,6 +515,61 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
   else
 #endif
   if (!extended) {
+#ifdef SDL2
+    if ((virtkey >= SDLK_KP_1) && (virtkey <= SDLK_KP_9)) {
+      keydown[virtkey - SDLK_KP_1] = down;
+    } else {
+      switch (virtkey) {
+        case SDLK_KP_1:
+        case SDLK_END:
+          keydown[0] = down;
+          break;
+        case SDLK_KP_2:
+        case SDLK_DOWN:
+          keydown[1] = down;
+          break;
+        case SDLK_KP_3:
+        case SDLK_PAGEDOWN:
+          keydown[2] = down;
+          break;
+        case SDLK_KP_4:
+        case SDLK_LEFT:
+          keydown[3] = down;
+          break;
+        case SDLK_KP_5:
+        case SDLK_CLEAR:
+          keydown[4] = down;
+          break;
+        case SDLK_KP_6:
+        case SDLK_RIGHT:
+          keydown[5] = down;
+          break;
+        case SDLK_KP_7:
+        case SDLK_HOME:
+          keydown[6] = down;
+          break;
+        case SDLK_KP_8:
+        case SDLK_UP:
+          keydown[7] = down;
+          break;
+        case SDLK_KP_9:
+        case SDLK_PAGEUP:
+          keydown[8] = down;
+          break;
+        case SDLK_KP_0:
+        case SDLK_INSERT:
+          keydown[9] = down;
+          break;  // Button #0
+        case SDLK_KP_PERIOD:
+        case SDLK_DELETE:
+          keydown[10] = down;
+          break;  // Button #1
+        default:
+          keychange = 0;
+          break;
+      }
+    }
+#else
     if ((virtkey >= SDLK_KP1) && (virtkey <= SDLK_KP9)) {
       keydown[virtkey - SDLK_KP1] = down;
     } else {
@@ -503,10 +623,82 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
           break;
       }
     }
+#endif
   }
-
   if (keychange) {
     // Is it a joystick button 0 or 1 (open-apple or solid apple)?
+#ifdef SDL2
+    if ((virtkey == SDLK_KP_0) || (virtkey == SDLK_INSERT)) {
+      // It's a joystick button...
+      if (down) {
+        if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
+          buttonlatch[0] = BUTTONTIME;
+        } else if (joyinfo[joytype[1]].device != DEVICE_NONE) {
+          buttonlatch[2] = BUTTONTIME;
+          buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
+        }
+      }
+    } else if ((virtkey == SDLK_KP_PERIOD) || (virtkey == SDLK_DELETE)) {
+      // It is joystick button pressed from keypad "." or "delete"...
+      if (down) {
+        if (joyinfo[joytype[1]].device != DEVICE_KEYBOARD) {
+          buttonlatch[1] = BUTTONTIME;
+        }
+      }
+    } else if ((down && !autorep) || (nCenteringType == MODE_CENTERING)) {
+      // It is the keypad direction keys 0-9; calculate quantitized
+      // PDL(0) and PDL(1) values by taking the mean.
+      int xsum = 0;
+      int ysum = 0;
+      int key_idx = 0;
+      int keydown_count = 0;
+
+      // Special-case for corners by side, e.g. left and up, right and down.
+      // Convert (for example) left ("4" key) and down ("2") key to the "1" i
+      // key (index 0).
+      // We are not going to overwrite the keydown status here,
+      // but convert and override the calculated value.
+      static int corner_convert_lookup[16] =      // 2 ^ 4 key combinations:
+      {                                           // "2", "4", "6", and "8"
+        -1, -1, -1, 8,
+        -1, 6, -1, -1,
+        -1, -1, 2, -1,
+        0, -1, -1, -1
+      };
+
+      int corner_override_idx = -1;
+      int corner_idx =
+          ((int)(0==keydown[1] /*"2"*/))
+        | ((int)(0==keydown[3] /*"4"*/)<<1)
+        | ((int)(0==keydown[5] /*"6"*/)<<2)
+        | ((int)(0==keydown[7])/*"8"*/<<3);
+      if ((corner_override_idx = corner_convert_lookup[corner_idx]) >= 0) {
+        xsum = keyvalue[corner_override_idx].x;
+        ysum = keyvalue[corner_override_idx].y;
+        keydown_count = 1;
+      } else {
+        // Get the quantitized sum
+        while (key_idx < 9) {
+          if (keydown[key_idx]) {
+            keydown_count++;
+            xsum += keyvalue[key_idx].x;
+            ysum += keyvalue[key_idx].y;
+          }
+          key_idx++;
+        }
+      }
+      if (keydown_count) {
+        // Get the x mean from the sum
+        xpos[nJoyNum] = (xsum / keydown_count) + PDL_CENTRAL + g_nPdlTrimX;
+        ypos[nJoyNum] = (ysum / keydown_count) + PDL_CENTRAL + g_nPdlTrimY;
+      } else {
+        // Can this ever happen?  Yes, in a key-up.
+        // Example: was pressing and holding "4" to go left, let up "4" key.
+        xpos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimX;
+        ypos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimY;
+      }
+    }
+#else
     if ((virtkey == SDLK_KP0) || (virtkey == SDLK_INSERT)) {
       // It's a joystick button...
       if (down) {
@@ -577,6 +769,7 @@ bool JoyProcessKey(int virtkey, bool extended, bool down, bool autorep) {
         ypos[nJoyNum] = PDL_CENTRAL + g_nPdlTrimY;
       }
     }
+#endif
   }
 
   return keychange;

@@ -38,6 +38,7 @@
 #include "stdafx.h"
 #include "asset.h"
 
+
 #define DEFINE_COPY_ROW(name, type)      \
 void name(type *src, int src_w, type *dst, int dst_w)  \
 {              \
@@ -419,9 +420,20 @@ int SDL_SoftStretchOr(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL
 SDL_Surface *font_sfc = NULL;  // used for font
 
 bool fonts_initialization(void) {
+
+#ifdef SDL2
+  font_sfc = SDL_ConvertSurfaceFormat(assets->font, SDL_GetWindowPixelFormat(sdl2window), 0);
+#else
   font_sfc = SDL_DisplayFormat(assets->font);
+#endif
+
   /* Transparant color is BLACK: */
+
+#ifdef SDL2
+  SDL_SetColorKey(font_sfc, SDL_TRUE, SDL_MapRGB(font_sfc->format, 0, 0, 0));
+#else
   SDL_SetColorKey(font_sfc, SDL_SRCCOLORKEY, SDL_MapRGB(font_sfc->format, 0, 0, 0));
+#endif
 
   return true;
 }
@@ -456,7 +468,11 @@ void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx,
     d.y = y;
     d.w = s.w * kx;
     d.h = s.h * ky;
+#ifdef SDL2
+    SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
   }
 }
 
@@ -485,7 +501,11 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
     d.y = y;
     d.w = s.w * kx;
     d.h = s.h * ky;
+#ifdef SDL2
+	SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
   }
 }
 
@@ -517,7 +537,11 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
     d.y = y;
     d.w = s.w * kx;
     d.h = s.h * ky;
+#ifdef SDL2
+	SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
   }
 }
 
@@ -549,7 +573,11 @@ void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b
     mycolors[i].b = (Uint8)(colors[i].b * b_factor);
   }
 
+#ifdef SDL2
+  SDL_SetPaletteColors(surface->format->palette, mycolors, 0, 256);
+#else
   SDL_SetColors(surface, mycolors, 0, 256);
+#endif
 }
 
 void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {

@@ -83,16 +83,28 @@ const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
 {
   //char ftpdirpath[MAX_PATH];
   //snprintf(ftpdirpath, MAX_PATH, "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
-  char ftpdirpath[1024];
-  snprintf(ftpdirpath, sizeof(ftpdirpath), "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
+
+  // GPT
+  //char ftpdirpath[1024];
+  //snprintf(ftpdirpath, sizeof(ftpdirpath), "%s/%s%s", g_sFTPLocalDir, g_sFTPDirListing, md5str(directory.c_str())); // get path for FTP dir listing
+
+  // devinsmith
+  std::string ftpdirpath = g_sFTPLocalDir;
+  ftpdirpath += "/";
+  ftpdirpath += g_sFTPDirListing;
+  ftpdirpath += md5str(directory.c_str());
 
   bool OKI;
   #ifndef _WIN32
   struct stat info;
-  if (stat(ftpdirpath, &info) == 0 && info.st_mtime > time(NULL) - RENEW_TIME) {
+  //if (stat(ftpdirpath, &info) == 0 && info.st_mtime > time(NULL) - RENEW_TIME) {
+  // devinsmith
+  if (stat(ftpdirpath.c_str(), &info) == 0 && info.st_mtime > time(NULL) - RENEW_TIME) {
     OKI = false; // use this file
   } else {
-    OKI = ftp_get(directory.c_str(), ftpdirpath); // get ftp dir listing
+    //OKI = ftp_get(directory.c_str(), ftpdirpath); // get ftp dir listing
+    // devinsmith
+    OKI = ftp_get(directory.c_str(), ftpdirpath.c_str()); // get ftp dir listing
   }
   #else
   // in WIN32 let's use constant caching? -- need to be redone using file.mtime
@@ -116,7 +128,9 @@ const std::vector<file_entry_t> FTP_file_list_generator_t::generate_file_list()
     file_list.push_back({ "..", file_entry_t::UP, 0 });
   }
 
-  FILE *fdir = fopen(ftpdirpath, "r");
+  //FILE *fdir = fopen(ftpdirpath, "r");
+  // devinsmith
+  FILE *fdir = fopen(ftpdirpath.c_str(), "r");
   char *tmp;
   char tmpstr[512];
   while ((tmp = fgets(tmpstr, 512, fdir))) // first looking for directories
