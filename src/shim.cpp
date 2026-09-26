@@ -40,7 +40,11 @@
 #include <sys/sysctl.h>
 #endif
 
-#include "SDL.h"
+#ifdef SDL2
+#include <SDL2/SDL.h>
+#else
+#include <SDL/SDL.h>
+#endif
 
 #define SDL_InvalidParamError(param)    SDL_SetError("Parameter '%s' is invalid", (param))
 

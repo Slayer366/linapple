@@ -1949,20 +1949,25 @@ void VideoPerformRefresh() {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
 #ifdef SDL2
-  SDL_Rect rects;
-	  rects.x = srect.x;
-	  rects.y = srect.y;
-	  rects.w = STATUS_PANEL_W;
-	  rects.h = STATUS_PANEL_H;
+    SDL_Rect rects;
+      rects.x = srect.x;
+      rects.y = srect.y;
+      rects.w = STATUS_PANEL_W;
+      rects.h = STATUS_PANEL_H;
 
-  SDL_UpdateWindowSurfaceRects(sdl2window, &rects, 1);
+    SDL_UpdateWindowSurfaceRects(sdl2window, &rects, 1);
 #else
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
 #endif
   }
   if (OSK_IsVisible() && !anydirty && !bStatusShow) {
     OSK_Draw(screen);
+#ifdef SDL2
+    SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
+    SDL_UpdateWindowSurface(sdl2window);
+#else
     SDL_Flip(screen);
+#endif
   }
   SetLastDrawnImage();
   redrawfull = 0;

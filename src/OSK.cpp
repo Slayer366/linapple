@@ -1,7 +1,5 @@
 #include "OSK.h"
 
-#include <SDL/SDL.h>
-#include <SDL_image.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -932,6 +930,154 @@ bool OSK_HandleEvent(SDL_Event *event)
 
   switch (event->type)
   {
+
+#ifdef SDL2
+
+    case SDL_KEYDOWN:
+    {
+      const SDL_Keycode sym = event->key.keysym.sym;
+
+      /* Physical Escape closes the OSK.  Invoking 'Esc' from the OSK sends it to the emulator. */
+      if (sym == SDLK_ESCAPE) {
+        g_bOSKVisible = false;
+        OSK_CloseJoystick();
+        return true;
+      }
+      if (sym == SDLK_UP || sym == SDLK_KP_8 || sym == SDLK_e || sym == SDLK_u || sym == SDLK_w || sym == SDLK_y) {
+        if (OSK_AllowInput())
+          MoveVertical(-1);
+        return true;
+      }
+      if (sym == SDLK_DOWN || sym == SDLK_KP_2 || sym == SDLK_c || sym == SDLK_m || sym == SDLK_v) {
+        if (OSK_AllowInput())
+          MoveVertical(1);
+        return true;
+      }
+      if (sym == SDLK_LEFT || sym == SDLK_KP_4 || sym == SDLK_t) {
+        if (OSK_AllowInput())
+          MoveHorizontal(-1);
+        return true;
+      }
+      if (sym == SDLK_RIGHT || sym == SDLK_KP_6 || sym == SDLK_p) {
+        if (OSK_AllowInput())
+          MoveHorizontal(1);
+        return true;
+      }
+      if (sym == SDLK_SPACE || sym == SDLK_RETURN || sym == SDLK_KP_ENTER) {
+        if (OSK_AllowInput())
+          ActivateSelected();
+        return true;
+      }
+
+      return true;
+    }
+
+    case SDL_JOYBUTTONDOWN:
+    {
+      if (event->jbutton.button == 0 || event->jbutton.button == 1 || 
+          event->jbutton.button == 2 || event->jbutton.button == 3 || 
+          event->jbutton.button == 4)
+      {
+        if (OSK_AllowInput())
+          ActivateSelected();
+        return true;
+      }
+
+      if (event->jbutton.button == g_OSKDPadUp) {
+        if (OSK_AllowInput())
+          MoveVertical(-1);
+        return true;
+      }
+      if (event->jbutton.button == g_OSKDPadDown) {
+        if (OSK_AllowInput())
+          MoveVertical(1);
+        return true;
+      }
+      if (event->jbutton.button == g_OSKDPadLeft) {
+        if (OSK_AllowInput())
+          MoveHorizontal(-1);
+        return true;
+      }
+      if (event->jbutton.button == g_OSKDPadRight) {
+        if (OSK_AllowInput())
+          MoveHorizontal(1);
+        return true;
+      }
+
+      return true;
+    }
+
+    case SDL_JOYHATMOTION:
+    {
+      switch (event->jhat.value)
+        {
+          case SDL_HAT_UP:
+            if (OSK_AllowInput())
+              MoveVertical(-1);
+            break;
+          case SDL_HAT_DOWN:
+            if (OSK_AllowInput())
+              MoveVertical(1);
+            break;
+          case SDL_HAT_LEFT:
+            if (OSK_AllowInput())
+              MoveHorizontal(-1);
+            break;
+          case SDL_HAT_RIGHT:
+            if (OSK_AllowInput())
+              MoveHorizontal(1);
+            break;
+
+          default:
+            break;
+        }
+
+      return true;
+    }
+
+    case SDL_JOYAXISMOTION:
+    {
+        Sint16 value = event->jaxis.value;
+        int axis = event->jaxis.axis;
+
+        if (g_OSKSwapJoystickAxes) {
+            axis = 1 - axis;
+        }
+        if (g_OSKInvertJoystick) {
+            value = -value;
+        }
+
+        if (axis == 0)      {
+        if (value < -16000)
+        {
+          if (OSK_AllowInput())
+            MoveHorizontal(-1);
+        }
+        else if (value > 16000)
+        {
+          if (OSK_AllowInput())
+            MoveHorizontal(1);
+        }
+      }
+      else if (axis == 1)
+      {
+        if (value < -16000)
+        {
+          if (OSK_AllowInput())
+            MoveVertical(-1);
+        }
+        else if (value > 16000)
+        {
+          if (OSK_AllowInput())
+            MoveVertical(1);
+        }
+      }
+
+      return true;
+    }
+
+#else
+
     case SDL_KEYDOWN:
     {
       const SDLKey sym = event->key.keysym.sym;
@@ -1074,6 +1220,8 @@ bool OSK_HandleEvent(SDL_Event *event)
 
       return true;
     }
+
+#endif
 
     default:
       return true;

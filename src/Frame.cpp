@@ -308,6 +308,12 @@ void FrameQuickState(int num, int mod)
   }
 }
 
+static bool bIamFullScreened;  // for correct fullscreen switching
+
+#ifdef SDL2
+static int sdl2windowflags;
+#endif
+
 void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
   // OSK will be invoked using 'Esc' for now
@@ -331,22 +337,87 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
   // Unicode Translated character
   if (g_KeyboardLanguage == Spanish_ES && mysym == 0)
   {
+#ifdef SDL2
+    // SDL2 lacks unicode support
+#else
     mysym = e->key.keysym.unicode;
+#endif
   }
 
   switch (e->type) {//type of SDL event
+
 #ifdef SDL2
-      if (sdl2window == NULL)
+
+    case SDL_WINDOWEVENT:
+      if (e->window.event == SDL_WINDOWEVENT_RESIZED) {
+        printf("OLD DIMENSIONS: %d  %d\n", g_ScreenWidth, g_ScreenHeight);
+
+        g_ScreenWidth = e->window.data1;
+        g_ScreenHeight = (e->window.data2 / 96) * 96;
+        if (g_ScreenHeight < 192) {
+          g_ScreenHeight = 192;
+        }
+
+        sdl2windowflags = 0;
+        if (bIamFullScreened) {
+          sdl2windowflags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+        }
+
+        if (sdl2window == NULL)
           sdl2window = SDL_CreateWindow("linapple",
-                           SDL_WINDOWPOS_UNDEFINED,
-                           SDL_WINDOWPOS_UNDEFINED,
-                          e->resize.w, e->resize.h,
-                          SDL_WINDOW_SHOWN);
-	    if (sdl2surface == NULL) {
+                                       SDL_WINDOWPOS_UNDEFINED,
+                                       SDL_WINDOWPOS_UNDEFINED,
+                                       g_ScreenWidth, g_ScreenHeight,
+                                       sdl2windowflags);
+
+        if (sdl2surface == NULL) {
           sdl2surface = SDL_GetWindowSurface(sdl2window);
+        }
+
+        if (screen) {
+          SDL_FreeSurface(screen);
+        }
+
+        screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight,
+                                      SCREEN_BPP, 0, 0, 0, 0);
+
+        if (screen == NULL) {
+          SDL_Quit();
+          return;
+        }
+
+        g_WindowResized =
+          (g_ScreenWidth != SCREEN_WIDTH) |
+          (g_ScreenHeight != SCREEN_HEIGHT);
+
+        printf("Screen size is %dx%d\n",
+               g_ScreenWidth, g_ScreenHeight);
+
+        if (g_WindowResized) {
+          origRect.x = origRect.y = newRect.x = newRect.y = 0;
+          origRect.w = SCREEN_WIDTH;
+          origRect.h = SCREEN_HEIGHT;
+          newRect.w = g_ScreenWidth;
+          newRect.h = g_ScreenHeight;
+
+          if ((g_nAppMode != MODE_LOGO) &&
+              (g_nAppMode != MODE_DEBUG)) {
+            VideoRedrawScreen();
+          }
+        }
       }
-      screen = SDL_CreateRGBSurface(SDL_SWSURFACE, e->resize.w, e->resize.h, SCREEN_BPP, 0, 0, 0, 0);
+      else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+      {
+        g_bAppActive = true;
+      }
+      else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST)
+      {
+        g_bAppActive = false;
+      }
+      break;
+
 #else
+
     case SDL_VIDEORESIZE:
       printf("OLD DIMENSIONS: %d  %d\n", g_ScreenWidth, g_ScreenHeight);
       g_ScreenWidth = e->resize.w;
@@ -355,8 +426,9 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         g_ScreenHeight = 192;
       }
       // Resize the screen
-      screen = SDL_SetVideoMode(e->resize.w, e->resize.h, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE | SDL_RESIZABLE);
-#endif
+      screen = SDL_SetVideoMode(e->resize.w, e->resize.h, SCREEN_BPP,
+                                SDL_SWSURFACE | SDL_HWPALETTE | SDL_RESIZABLE);
+
       if (screen == NULL) {
         SDL_Quit();
         return;
@@ -381,6 +453,8 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
     case SDL_ACTIVEEVENT:
       g_bAppActive = e->active.gain; // if gain==1, app is active
       break;
+
+#endif
 
     case SDL_KEYDOWN:
       if (mysym == SDLK_ESCAPE) {
@@ -440,7 +514,11 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
           VideoRedrawScreen();
         }
         g_bResetTiming = true;
+#ifdef SDL2
+      } else if (mysym == SDLK_SCROLLLOCK) {
+#else
       } else if (mysym == SDLK_SCROLLOCK) {
+#endif
         g_bScrollLock_FullSpeed = !g_bScrollLock_FullSpeed; // turn on/off full speed?
       } else if ((g_nAppMode == MODE_RUNNING) || (g_nAppMode == MODE_LOGO) || (g_nAppMode == MODE_STEPPING)) {
         g_bDebuggerEatKey = false;
@@ -840,13 +918,11 @@ void ResetMachineState() {
   SpkrReset();
 }
 
-static bool bIamFullScreened;  // for correct fullscreen switching
-
 void SetFullScreenMode() {
   if (!bIamFullScreened) {
     bIamFullScreened = true;
 #ifdef SDL2
-  // Toggle fullscreen here
+    sdl2windowflags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 #else
     SDL_WM_ToggleFullScreen(screen);
 #endif
@@ -860,7 +936,7 @@ void SetNormalMode()
   if (bIamFullScreened) {
     bIamFullScreened = 0;
 #ifdef SDL2
-  // Toggle fullscreen=false here
+    sdl2windowflags = SDL_WINDOW_SHOWN;
 #else
     SDL_WM_ToggleFullScreen(screen);// we should go back anyway!? ^_^  --bb
 #endif
@@ -919,7 +995,7 @@ int FrameCreateWindow()
                           SDL_WINDOWPOS_UNDEFINED,
                           SDL_WINDOWPOS_UNDEFINED,
                           g_ScreenWidth, g_ScreenHeight,
-                          SDL_WINDOW_SHOWN);
+                          sdl2windowflags);
   sdl2surface = SDL_GetWindowSurface(sdl2window);
   screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, 0, 0, 0, 0);
 #else

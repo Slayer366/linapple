@@ -1,7 +1,13 @@
 #ifndef OSK_H
 #define OSK_H
 
+#ifdef SDL2
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#else
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#endif
 
 bool OSK_IsVisible();
 void OSK_Toggle();

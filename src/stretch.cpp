@@ -502,7 +502,7 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
     d.w = s.w * kx;
     d.h = s.h * ky;
 #ifdef SDL2
-	SDL_BlitScaled(font_sfc, &s, surface, &d);
+    SDL_BlitScaled(font_sfc, &s, surface, &d);
 #else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
 #endif
@@ -538,7 +538,7 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
     d.w = s.w * kx;
     d.h = s.h * ky;
 #ifdef SDL2
-	SDL_BlitScaled(font_sfc, &s, surface, &d);
+    SDL_BlitScaled(font_sfc, &s, surface, &d);
 #else
     SDL_SoftStretchOr(font_sfc, &s, surface, &d);
 #endif

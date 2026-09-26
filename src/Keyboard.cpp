@@ -214,6 +214,11 @@ void KeybUpdateCtrlShiftStatus() {
   g_bShiftKey = (keys[SDL_SCANCODE_LSHIFT] | keys[SDL_SCANCODE_RSHIFT]); // 0x8000 KF_UP   SHIFT
   g_bCtrlKey = (keys[SDL_SCANCODE_LCTRL] | keys[SDL_SCANCODE_RCTRL]);  // CTRL
   g_bAltKey = (keys[SDL_SCANCODE_LALT] | keys[SDL_SCANCODE_RALT]);  // ALT
+
+  if (g_KeyboardLanguage == Spanish_ES) {
+    g_bAltKey = keys[SDL_SCANCODE_LALT];  // ALT
+    g_bAltGrKey = keys[SDL_SCANCODE_RALT];  // ALT GR
+  }
 #else
   g_bShiftKey = (keys[SDLK_LSHIFT] | keys[SDLK_RSHIFT]); // 0x8000 KF_UP   SHIFT
   g_bCtrlKey = (keys[SDLK_LCTRL] | keys[SDLK_RCTRL]);  // CTRL

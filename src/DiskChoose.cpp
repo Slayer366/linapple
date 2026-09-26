@@ -418,7 +418,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       }
 
       // choose an item?
-      if (keyboard[SDL_SCANCODE_RETURN]) {
+      if (keyboard[SDL_SCANCODE_RETURN] || keyboard[SDL_SCANCODE_KP_ENTER]) {
         // dup string from selected file name
         const file_entry_t& file_entry = file_list[act_file];
         filename = file_entry.name;
@@ -456,7 +456,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       // an event-handler that's not really feasible without a major restructure.)
       {
         bool char_hit = false;
-        char ch;
+        char ch = 0;
         int char_range_idx = 0;
         unsigned int ch_key;
         static unsigned int char_range[4][2] = {{SDL_SCANCODE_A, SDL_SCANCODE_Z},{SDL_SCANCODE_0,SDL_SCANCODE_9},{0,0}};

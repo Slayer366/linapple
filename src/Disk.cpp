@@ -509,13 +509,13 @@ int DiskInsert(int drive, LPCTSTR imageFileName, bool writeProtected, bool creat
   if (error == IMAGE_ERROR_NONE) {
     tmp = GetImageTitle(imageFileName, fptr);
     snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(tmp)), tmp);
-#ifdef SDL2
-  // Caption to be set during window creation
-#else
     if (drive == 0) {
+#ifdef SDL2
+      // TODO: Caption for drive 0
+#else
       SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
-    }
 #endif
+    }
     printf("Disk is inserted. Full name = %s\n", imageFileName);
   } else {
     printf("Error %d when inserting disk %s\n", error, imageFileName);
@@ -840,7 +840,7 @@ bool DiskDriveSwap()
   // change title
   snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(g_aFloppyDisk[0].imagename)), g_aFloppyDisk[0].imagename);
 #ifdef SDL2
-  // Caption to be set during window creation
+  // TODO: Caption for drive 0
 #else
   SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
 #endif

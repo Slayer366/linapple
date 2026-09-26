@@ -22,7 +22,11 @@
 #  include <windows.h>
 #endif
 
-#include <SDL.h>
+#ifdef SDL2
+#include <SDL2/SDL.h>
+#else
+#include <SDL/SDL.h>
+#endif
 
 #include "Common.h"
 #include "Structs.h"

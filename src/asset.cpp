@@ -19,8 +19,14 @@
 */
 
 #include <sys/param.h>
-#include <SDL.h>
-#include <SDL_image.h>
+
+#ifdef SDL2
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#else
+#include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#endif
 
 #include "asset.h"
 #include "stdafx.h"  // for Disk.h DiskInsert()

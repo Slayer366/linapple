@@ -1149,9 +1149,13 @@ int main(int argc, char *argv[])
   } // init SDL subsystems, set icon
 
   // add suport spanish special keys
+#ifdef SDL2
+  // SDL2 lacks unicode support
+#else
   if (SDL_EnableUNICODE(1)) {
     return 1;
   }
+#endif
 
   // CURL routines
   curl_global_init(CURL_GLOBAL_DEFAULT);
