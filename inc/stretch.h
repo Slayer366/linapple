@@ -98,6 +98,8 @@ void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, d
 // Some auxiliary functions
 void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r);
 
+void surfacefade32(SDL_Surface *surface, float factor);
+
 void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel);
 
 void rectangle(SDL_Surface *surface, int x, int y, int w, int h, Uint32 pixel);

@@ -422,16 +422,15 @@ SDL_Surface *font_sfc = NULL;  // used for font
 bool fonts_initialization(void) {
 
 #ifdef SDL2
-  font_sfc = SDL_ConvertSurfaceFormat(assets->font, SDL_GetWindowPixelFormat(sdl2window), 0);
-#else
-  font_sfc = SDL_DisplayFormat(assets->font);
-#endif
+//  font_sfc = SDL_ConvertSurfaceFormat(assets->font, SDL_GetWindowPixelFormat(sdl2window), 0);
+  font_sfc = SDL_ConvertSurface(assets->font, screen->format, 0);
 
   /* Transparant color is BLACK: */
-
-#ifdef SDL2
   SDL_SetColorKey(font_sfc, SDL_TRUE, SDL_MapRGB(font_sfc->format, 0, 0, 0));
 #else
+  font_sfc = SDL_DisplayFormat(assets->font);
+
+  /* Transparant color is BLACK: */
   SDL_SetColorKey(font_sfc, SDL_SRCCOLORKEY, SDL_MapRGB(font_sfc->format, 0, 0, 0));
 #endif
 
@@ -578,6 +577,30 @@ void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b
 #else
   SDL_SetColors(surface, mycolors, 0, 256);
 #endif
+}
+
+void surfacefade32(SDL_Surface *surface, float factor) {
+  SDL_LockSurface(surface);
+
+  for (int y = 0; y < surface->h; y++)
+  {
+      Uint32 *row = (Uint32 *)((Uint8 *)surface->pixels + y * surface->pitch);
+
+      for (int x = 0; x < surface->w; x++)
+      {
+          Uint8 r, g, b, a;
+
+          SDL_GetRGBA(row[x], surface->format, &r, &g, &b, &a);
+
+          row[x] = SDL_MapRGBA(surface->format,
+                              (Uint8)(r * factor),
+                              (Uint8)(g * factor),
+                              (Uint8)(b * factor),
+                              a);
+      }
+  }
+
+  SDL_UnlockSurface(surface);
 }
 
 void putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {

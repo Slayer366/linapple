@@ -378,7 +378,7 @@ void CreateDIBSections() {
 #ifdef SDL2
   SDL_SetPaletteColors(g_hDeviceBitmap->format->palette, g_pSourceHeader, 0, 256);
   SDL_SetPaletteColors(g_origscreen->format->palette, g_pSourceHeader, 0, 256);
-  SDL_SetPaletteColors(screen->format->palette, g_pSourceHeader, 0, 256);
+//  SDL_SetPaletteColors(screen->format->palette, g_pSourceHeader, 0, 256);
 #else
   SDL_SetColors(g_hDeviceBitmap, g_pSourceHeader, 0, 256);
   SDL_SetColors(g_origscreen, g_pSourceHeader, 0, 256);
@@ -386,17 +386,26 @@ void CreateDIBSections() {
   if (g_hStatusSurface) {
     SDL_FreeSurface(g_hStatusSurface);
   }
-  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
+//  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
+//  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, 8, 0, 0, 0, 0);
+  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, 32, 0, 0, 0, 0);
 #ifdef SDL2
 //  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
+  SDL_SetPaletteColors(g_hStatusSurface->format->palette, g_pSourceHeader, 0, 256);
 #else
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 #endif
 
   /* Create status panel background */
   SDL_Rect srect;
+
+#ifdef SDL2
+  Uint32 mybluez = SDL_MapRGB(g_hStatusSurface->format, 10, 10, 255);  // bluez color, know that?
+  Uint32 myyell = SDL_MapRGB(g_hStatusSurface->format, 255, 255, 0);  // yellow color?
+#else
   Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);  // bluez color, know that?
   Uint32 myyell = SDL_MapRGB(screen->format, 255, 255, 0);  // yellow color?
+#endif
 
   srect.x = srect.y = 0;
   srect.w = STATUS_PANEL_W;
@@ -1311,8 +1320,26 @@ SDL_Surface* LoadCharset() {
   {
     // convert format
 #ifdef SDL2
-	//SDL_Surface *result = SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdl2window), 0);
-	 SDL_Surface *result = tmp;
+//    SDL_Surface *result = SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdl2window), 0);
+//    SDL_Surface *result = tmp;
+//    SDL_FreeSurface(tmp);
+    SDL_Surface *result = SDL_CreateRGBSurface(SDL_SWSURFACE, tmp->w, tmp->h, 8, 0, 0, 0, 0);
+    if (result) {
+        SDL_SetPaletteColors(result->format->palette, framebufferinfo, 0, 256);
+
+        Uint8 blackIndex = (Uint8)SDL_MapRGB(result->format, 0, 0, 0);
+        Uint8 whiteIndex = (Uint8)SDL_MapRGB(result->format, 240, 240, 240);
+
+        for (int y = 0; y < tmp->h; y++) {
+            Uint8 *src = (Uint8 *)tmp->pixels + y * tmp->pitch;
+
+            Uint8 *dst = (Uint8 *)result->pixels + y * result->pitch;
+
+            for (int x = 0; x < tmp->w; x++) {
+                dst[x] = (src[x] == 0) ? blackIndex : whiteIndex;
+            }
+        }
+    }
 #else
     SDL_Surface *result = SDL_DisplayFormat(tmp);
     SDL_FreeSurface(tmp);
@@ -1668,7 +1695,7 @@ void VideoDisplayLogo() {
   }
   if (screen->format->palette && g_hLogoBitmap->format->palette) {
 #ifdef SDL2
-    SDL_SetPaletteColors(screen->format->palette, g_hLogoBitmap->format->palette->colors, 0, g_hLogoBitmap->format->palette->ncolors);
+//    SDL_SetPaletteColors(screen->format->palette, g_hLogoBitmap->format->palette->colors, 0, g_hLogoBitmap->format->palette->ncolors);
 #else
     SDL_SetColors(screen, g_hLogoBitmap->format->palette->colors, 0, g_hLogoBitmap->format->palette->ncolors);
 #endif
@@ -1704,17 +1731,31 @@ void VideoInitialize() {
 
   // LOAD THE splash screen
 #ifdef SDL2
-  g_hLogoBitmap = assets->splash; //SDL_ConvertSurfaceFormat(assets->splash, SDL_GetWindowPixelFormat(sdl2window), 0);
+//  g_hLogoBitmap = SDL_ConvertSurfaceFormat(assets->splash, SDL_GetWindowPixelFormat(sdl2window), 0);
+  g_hLogoBitmap = SDL_ConvertSurface(assets->splash, screen->format, 0);
 #else
   g_hLogoBitmap = SDL_DisplayFormat(assets->splash);
 #endif
 
+#ifdef SDL2
+  // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN THE BITMAPINFO STRUCTURE
+  CreateIdentityPalette();
+
+  if (screen->format->palette) {
+    SDL_SetPaletteColors(screen->format->palette, framebufferinfo, 0, 256);
+  }
+
+  // LOAD APPLE CHARSET40
+  if (!charset40)
+    charset40 = LoadCharset();
+#else
   // LOAD APPLE CHARSET40
   if (!charset40)
     charset40 = LoadCharset();
 
   // CREATE AN IDENTITY PALETTE AND FILL IN THE CORRESPONDING COLORS IN THE BITMAPINFO STRUCTURE
   CreateIdentityPalette();
+#endif
 
   // PREFILL THE 16 CUSTOM COLORS AND MAKE SURE TO INCLUDE THE CURRENT MONOCHROME COLOR
   for (int index = DARK_RED; index <= NUM_COLOR_PALETTE; index++)

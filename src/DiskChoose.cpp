@@ -201,7 +201,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
   const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
   const double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
+#ifdef SDL2
+  // another method besides the my_screen surface will be used to dim the background for SDL2
+#else
   SDL_Surface *my_screen;  // for background
+#endif
   {
     if (font_sfc == NULL) {
       if (!fonts_initialization()) {
@@ -228,24 +232,31 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
 #ifdef SDL2
 //	SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 255, 0, 255)); // add by trngaje
 #endif
+
+#ifdef SDL2
+  // Copy the current contents of our sdl2surface to generate a dimmed background.
+  // It seems that something clears the screen in this SDL2 path
+  SDL_BlitScaled(sdl2surface, NULL, screen, NULL);
+
+  surfacefade32(screen, 0.2F);
+//      SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+#else
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);
     if (tempSurface->format->palette && my_screen->format->palette) {
-#ifdef SDL2
-      SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
-#else
       SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
-#endif
     }
-
     surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
     SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
     SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+#endif
+
 
 #define  NORMAL_LENGTH 60
     font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
 
     font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
+
 #ifdef SDL2
     SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
     SDL_UpdateWindowSurface(sdl2window);
@@ -275,7 +286,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       SDL_Delay(100);
       SDL_PollEvent(&event);
     }
+#ifdef SDL2
+    // No need to free the my_screen surface here since we aren't using it for SDL2
+#else
     SDL_FreeSurface(my_screen);
+#endif
     return false;
   }
 
@@ -295,7 +310,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
 
     while (true) {
 
+#ifdef SDL2
+      // another method besides the my_screen surface will be used to dim the background for SDL2
+#else
       SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+#endif
       font_print_centered(sx / 2, 5 * facy, dir.substr(0, NORMAL_LENGTH).c_str(), screen, 1.5 * facx, 1.3 * facy);
       if (slot == 6) {
         font_print_centered(sx / 2, 20 * facy, "Choose image for floppy 140KB drive", screen, 1 * facx, 1 * facy);
@@ -369,7 +388,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       while (event.type != SDL_KEYDOWN) {  // wait for key pressed
         // GPH: Honor quit even if we're in the diskchoose state.
         if (SDL_QUIT == event.type) {
+#ifdef SDL2
+          // No need to free the my_screen surface here since we aren't using it for SDL2
+#else
           SDL_FreeSurface(my_screen);
+#endif
           SDL_PushEvent(&event); // push quit event
           return false;
         }
@@ -428,12 +451,10 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
           isdir = false;  // this is directory (catalog in Apple][ terminology)
         }
         index_file = act_file;  // remember current index
-        SDL_FreeSurface(my_screen);
         return true;
       }
 
       if (keyboard[SDL_SCANCODE_ESCAPE]) {
-        SDL_FreeSurface(my_screen);
         return false;    // ESC has been pressed
       }
 

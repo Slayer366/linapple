@@ -124,10 +124,11 @@ void DrawStatusArea(int drawflags)
   }
 
   SDL_Rect srect;
-  Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);  // bluez color, know that?
 #ifdef SDL2
-  //SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
+  Uint32 mybluez = SDL_MapRGB(g_hStatusSurface->format, 10, 10, 255);  // bluez color, know that?
+//  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
 #else
+  Uint32 mybluez = SDL_MapRGB(screen->format, 10, 10, 255);  // bluez color, know that?
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 #endif
 
@@ -194,7 +195,12 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
                                         " Scroll Lock - Toggle full speed",
                                         "  Numpad +/-/* - Increase/Decrease/Normal speed"};
 
+#ifdef SDL2
+  // another method besides the my_screen surface will be used to dim the background for SDL2
+#else
   SDL_Surface *my_screen; // for background
+#endif
+
   SDL_Surface *tempSurface = NULL; // temporary surface
 
   if (font_sfc == NULL) {
@@ -216,24 +222,22 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   if (tempSurface == NULL) {
     tempSurface = screen;
   } // Use screen, if none available
+#ifdef SDL2
+  // Copy the current contents of our sdl2surface to generate a dimmed background.
+  // It seems that something clears the screen in this SDL2 path
+  SDL_BlitScaled(sdl2surface, NULL, screen, NULL);
+
+  surfacefade32(screen, 0.2F);
+#else
   my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                    0, 0, 0);
-#ifdef SDL2
-  if (tempSurface->format->palette && my_screen->format->palette) {
-    SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
-
-	//SDL_SetPaletteColors(screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
-  }
-#else
   if (tempSurface->format->palette && my_screen->format->palette) {
     SDL_SetColors(my_screen, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
   }
-#endif
-
   surface_fader(my_screen, 0.2F, 0.2F, 0.2F, -1, 0);  // fade it out to 20% of normal
   SDL_BlitSurface(tempSurface, NULL, my_screen, NULL);
-
   SDL_BlitSurface(my_screen, NULL, screen, NULL);    // show background
+#endif
 
   double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
   double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
@@ -255,7 +259,8 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   rectangle(screen, 1, 1, g_ScreenWidth - 2, (Help_TopX - 8), SDL_MapRGB(screen->format, 255, 255, 0));
 
 #ifdef SDL2
-  tempSurface = SDL_ConvertSurfaceFormat(assets->icon, SDL_GetWindowPixelFormat(sdl2window), 0);
+//  tempSurface = SDL_ConvertSurfaceFormat(assets->icon, SDL_GetWindowPixelFormat(sdl2window), 0);
+  tempSurface = SDL_ConvertSurface(assets->icon, screen->format, 0);
 #else
   tempSurface = SDL_DisplayFormat(assets->icon);
 #endif
@@ -270,12 +275,11 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
 
 #ifdef SDL2
-  SDL_BlitScaled(tempSurface, &logo, screen, &scrr);
-  SDL_FreeSurface(tempSurface);
-  SDL_FreeSurface(my_screen);
+//  SDL_BlitScaled(tempSurface, &logo, screen, &scrr);
+  SDL_SoftStretch(tempSurface, &logo, screen, &scrr);
+//  SDL_FreeSurface(tempSurface);
 
   SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-
   SDL_UpdateWindowSurface(sdl2window);
 #else
   SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
@@ -370,16 +374,16 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
                                        g_ScreenWidth, g_ScreenHeight,
                                        sdl2windowflags);
 
-        if (sdl2surface == NULL) {
-          sdl2surface = SDL_GetWindowSurface(sdl2window);
-        }
+        sdl2surface = SDL_GetWindowSurface(sdl2window);
 
         if (screen) {
           SDL_FreeSurface(screen);
         }
 
-        screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight,
-                                      SCREEN_BPP, 0, 0, 0, 0);
+        screen = SDL_CreateRGBSurface(0,
+            g_ScreenWidth, g_ScreenHeight, sdl2surface->format->BitsPerPixel,
+            sdl2surface->format->Rmask, sdl2surface->format->Gmask,
+            sdl2surface->format->Bmask, sdl2surface->format->Amask);
 
         if (screen == NULL) {
           SDL_Quit();
@@ -526,7 +530,15 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         // . WM_KEYDOWN[Left-Control], then:
         // . WM_KEYDOWN[Right-Alt]
         bool autorep = 0; //previous key was pressed? 30bit of lparam
+#ifdef SDL2
+        bool extended =
+            (mysym == SDLK_UP) ||
+            (mysym == SDLK_DOWN) ||
+            (mysym == SDLK_LEFT) ||
+            (mysym == SDLK_RIGHT);
+#else
         bool extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
+#endif
         if (mymod & KMOD_RCTRL)     // GPH: Update trim?
         {
           JoyUpdateTrimViaKey(mysym);
@@ -562,7 +574,16 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
         KeybToggleCapsLock();
       } else {  // Need to know what "extended" means, and what's so special about SDLK_UP?
         if (myscancode) { // GPH: Checking scan codes tells us if a key was REALLY released.
+#ifdef SDL2
+          JoyProcessKey(mysym,
+                        (mysym == SDLK_UP) ||
+                        (mysym == SDLK_DOWN) ||
+                        (mysym == SDLK_LEFT) ||
+                        (mysym == SDLK_RIGHT),
+                        false, 0);
+#else
           JoyProcessKey(mysym, (mysym >= SDLK_UP && mysym <= SDLK_LEFT), false, 0);
+#endif
         }
       }
       break;
@@ -923,6 +944,7 @@ void SetFullScreenMode() {
     bIamFullScreened = true;
 #ifdef SDL2
     sdl2windowflags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    SDL_SetWindowFullscreen(sdl2window, sdl2windowflags);
 #else
     SDL_WM_ToggleFullScreen(screen);
 #endif
@@ -936,7 +958,8 @@ void SetNormalMode()
   if (bIamFullScreened) {
     bIamFullScreened = 0;
 #ifdef SDL2
-    sdl2windowflags = SDL_WINDOW_SHOWN;
+    sdl2windowflags = 0;
+    SDL_SetWindowFullscreen(sdl2window, sdl2windowflags);
 #else
     SDL_WM_ToggleFullScreen(screen);// we should go back anyway!? ^_^  --bb
 #endif
@@ -992,12 +1015,16 @@ int FrameCreateWindow()
   bIamFullScreened = false; // At startup not in fullscreen mode
 #ifdef SDL2
   sdl2window = SDL_CreateWindow("linapple",
-                          SDL_WINDOWPOS_UNDEFINED,
-                          SDL_WINDOWPOS_UNDEFINED,
-                          g_ScreenWidth, g_ScreenHeight,
-                          sdl2windowflags);
+                                SDL_WINDOWPOS_UNDEFINED,
+                                SDL_WINDOWPOS_UNDEFINED,
+                                g_ScreenWidth, g_ScreenHeight,
+                                sdl2windowflags);
+
   sdl2surface = SDL_GetWindowSurface(sdl2window);
-  screen = SDL_CreateRGBSurface(SDL_SWSURFACE, g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, 0, 0, 0, 0);
+
+  screen = SDL_CreateRGBSurface(0, g_ScreenWidth, g_ScreenHeight, sdl2surface->format->BitsPerPixel,
+                                sdl2surface->format->Rmask, sdl2surface->format->Gmask,
+                                sdl2surface->format->Bmask, sdl2surface->format->Amask);
 #else
   screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE);
 #endif

@@ -802,9 +802,22 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
   Uint8 *keys;
 #ifdef SDL2
   keys = (Uint8*)SDL_GetKeyboardState(NULL);
-#else
+  #ifdef KEY_OLD
+  keywaiting = 0;
+  //return keycode | (keys[lastvirtkey] ? 0x80 : 0);
+  SDL_Scancode scancode = SDL_GetScancodeFromKey((SDL_Keycode)lastvirtkey);
+  return keycode | ((scancode != SDL_SCANCODE_UNKNOWN && keys[scancode]) ? 0x80 : 0);
+  #else
+  unsigned char nKey = (keys[g_nKeyBuffer[g_nNextOutIdx].nVirtKey]) ? 0x80 : 0;
+  nKey |= g_nKeyBuffer[g_nNextOutIdx].nAppleKey;
+  if(g_nKeyBufferCnt) {
+    g_nKeyBufferCnt--;
+    g_nNextOutIdx = (g_nNextOutIdx + 1) % g_nKeyBufferSize;
+  }
+  return nKey;
+  #endif
+#else // SDL1
   keys = SDL_GetKeyState(NULL);
-#endif
   #ifdef KEY_OLD
   keywaiting = 0;
   return keycode | (keys[lastvirtkey] ? 0x80 : 0);
@@ -817,6 +830,7 @@ unsigned char KeybReadFlag(unsigned short, unsigned short, unsigned char, unsign
   }
   return nKey;
   #endif
+#endif // SDL
 }
 
 void KeybToggleCapsLock()

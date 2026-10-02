@@ -241,7 +241,8 @@ void AllocateDebuggerMemDC(void)
     SDL_Surface *tmp = IMG_ReadXPMFromArray(charset40_xpm);
     // convert format
 #ifdef SDL2
-	g_hDebugCharset = SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdl2window), 0);
+//    g_hDebugCharset = SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdl2window), 0);
+    g_hDebugCharset = SDL_ConvertSurface(tmp, screen->format, 0);
 #else
     g_hDebugCharset = SDL_DisplayFormat(tmp);
 #endif
@@ -290,12 +291,12 @@ void StretchBltMemToFrameDC(void)
 	SDL_SoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
 	SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
 #ifdef SDL2
-	SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-	SDL_UpdateWindowSurface(sdl2window);
+  SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
+  SDL_UpdateWindowSurface(sdl2window);
 #else
-	SDL_Flip(screen);
+  SDL_Flip(screen);
 #endif
-	pthread_mutex_unlock(&video_draw_mutex);
+  pthread_mutex_unlock(&video_draw_mutex);
 }
 
 // Font: Apple Text
