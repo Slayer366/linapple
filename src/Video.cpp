@@ -1950,9 +1950,17 @@ void VideoPerformRefresh() {
   // Clear this flag after TEXT screen has been updated
   g_bTextFlashFlag = false;
 
+#ifdef SDL2
+  SDL_Rect srect;
+    srect.x = screen->w - STATUS_PANEL_W - 5;
+    srect.y = screen->h - STATUS_PANEL_H - 5;
+    srect.w = STATUS_PANEL_W;
+    srect.h = STATUS_PANEL_H;
+#else
   SDL_Rect srect;
   srect.x = screen->w - STATUS_PANEL_W - 5;
   srect.y = screen->h - STATUS_PANEL_H - 5;
+#endif
 
   int bStatusShow = g_iStatusCycle;
   if (g_iStatusCycle > 0) {
@@ -1990,13 +1998,7 @@ void VideoPerformRefresh() {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
 #ifdef SDL2
-    SDL_Rect rects;
-      rects.x = srect.x;
-      rects.y = srect.y;
-      rects.w = STATUS_PANEL_W;
-      rects.h = STATUS_PANEL_H;
-
-    SDL_UpdateWindowSurfaceRects(sdl2window, &rects, 1);
+    SDL_UpdateWindowSurfaceRects(sdl2window, &srect, 1);
 #else
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
 #endif
