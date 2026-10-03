@@ -195,12 +195,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
                                         " Scroll Lock - Toggle full speed",
                                         "  Numpad +/-/* - Increase/Decrease/Normal speed"};
 
-#ifdef SDL2
-  // another method besides the my_screen surface will be used to dim the background for SDL2
-#else
   SDL_Surface *my_screen; // for background
-#endif
-
   SDL_Surface *tempSurface = NULL; // temporary surface
 
   if (font_sfc == NULL) {
@@ -225,8 +220,9 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 #ifdef SDL2
   // Copy the current contents of our sdl2surface to generate a dimmed background.
   // It seems that something clears the screen in this SDL2 path
-  SDL_BlitScaled(sdl2surface, NULL, screen, NULL);
-
+  my_screen = SDL_ConvertSurface(screen, screen->format, 0);
+  //SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+  SDL_BlitScaled(sdl2surface, NULL, my_screen, NULL);
   surfacefade32(screen, 0.2F);
 #else
   my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
@@ -275,9 +271,9 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
 
 
 #ifdef SDL2
-//  SDL_BlitScaled(tempSurface, &logo, screen, &scrr);
-  SDL_SoftStretch(tempSurface, &logo, screen, &scrr);
-//  SDL_FreeSurface(tempSurface);
+  SDL_BlitScaled(tempSurface, &logo, screen, &scrr);
+  SDL_FreeSurface(tempSurface);
+  SDL_FreeSurface(my_screen);
 
   SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
   SDL_UpdateWindowSurface(sdl2window);
