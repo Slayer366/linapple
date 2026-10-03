@@ -285,6 +285,12 @@ void ContinueExecution()
     }
     #endif
   }
+#ifdef SDL2
+  if (video_frame_ready) {
+    SDL_UpdateWindowSurface(sdl2window);
+    video_frame_ready = false;
+  }
+#endif
 }
 
 void SingleStep(bool bReinit)

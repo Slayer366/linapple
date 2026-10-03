@@ -158,6 +158,7 @@ typedef bool (*UpdateFunc_t)(int, int, int, int, int);
 static unsigned char celldirty[40][32];
 static unsigned int customcolors[NUM_COLOR_PALETTE];  // MONOCHROME is last custom color
 
+bool video_frame_ready = false;
 
 SDL_Surface *g_hDeviceBitmap;
 static LPBYTE framebufferbits;
@@ -1989,7 +1990,9 @@ void VideoPerformRefresh() {
 #ifdef SDL2
     SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
 	//SDL_FillRect(sdl2surface, 0, SDL_MapRGB(sdl2surface->format, 255, 0, 0));
-    SDL_UpdateWindowSurface(sdl2window);
+	//The SDL2 window will get updated in ContinueExecution() instead
+  //SDL_UpdateWindowSurface(sdl2window);
+    video_frame_ready = true;
 #else
     SDL_Flip(screen);  // flip SDL buffers
 #endif
@@ -1998,7 +2001,9 @@ void VideoPerformRefresh() {
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
 #ifdef SDL2
-    SDL_UpdateWindowSurfaceRects(sdl2window, &srect, 1);
+    //The SDL2 window will get updated in ContinueExecution() instead
+    //SDL_UpdateWindowSurfaceRects(sdl2window, &srect, 1);
+    video_frame_ready = true;
 #else
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
 #endif
@@ -2007,7 +2012,9 @@ void VideoPerformRefresh() {
     OSK_Draw(screen);
 #ifdef SDL2
     SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-    SDL_UpdateWindowSurface(sdl2window);
+    //The SDL2 window will get updated in ContinueExecution() instead
+    //SDL_UpdateWindowSurface(sdl2window);
+    video_frame_ready = true;
 #else
     SDL_Flip(screen);
 #endif
@@ -2034,12 +2041,12 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
   }
 
 #ifdef SDL2
-//  if (video_worker_active_) {
+  if (video_worker_active_) {
     video_worker_refresh_ = true;
-//  } else {
+  } else {
     // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
- // }
+  }
 #else
   if (video_worker_active_) {
     video_worker_refresh_ = true;
