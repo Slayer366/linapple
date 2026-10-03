@@ -387,13 +387,13 @@ void CreateDIBSections() {
   if (g_hStatusSurface) {
     SDL_FreeSurface(g_hStatusSurface);
   }
-//  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
-//  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, 8, 0, 0, 0, 0);
-  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, 32, 0, 0, 0, 0);
 #ifdef SDL2
+  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, 32, 0, 0, 0, 0);
 //  SDL_SetPaletteColors(g_hStatusSurface->format->palette, screen->format->palette->colors, 0, 256);
   SDL_SetPaletteColors(g_hStatusSurface->format->palette, g_pSourceHeader, 0, 256);
 #else
+//  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, SCREEN_BPP, 0, 0, 0, 0);
+  g_hStatusSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, STATUS_PANEL_W, STATUS_PANEL_H, 8, 0, 0, 0, 0);
   SDL_SetColors(g_hStatusSurface, screen->format->palette->colors, 0, 256);
 #endif
 
