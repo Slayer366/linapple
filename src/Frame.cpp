@@ -224,6 +224,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   //SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
   SDL_BlitScaled(sdl2surface, NULL, my_screen, NULL);
   surfacefade32(my_screen, 0.2F);
+  SDL_BlitScaled(my_screen, NULL, screen, NULL);    // show background
 #else
   my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                    0, 0, 0);

@@ -201,7 +201,11 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
   const double facx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
   const double facy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
 
+#ifdef SDL2
+  static SDL_Surface *my_screen = NULL;
+#else
   SDL_Surface *my_screen;  // for background
+#endif
   {
     if (font_sfc == NULL) {
       if (!fonts_initialization()) {
@@ -232,10 +236,17 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
 #ifdef SDL2
   // Copy the current contents of our sdl2surface to generate a dimmed background.
   // It seems that something clears the screen in this SDL2 path
-  my_screen = SDL_ConvertSurface(screen, screen->format, 0);
-  //SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
-  SDL_BlitScaled(sdl2surface, NULL, my_screen, NULL);
-  surfacefade32(my_screen, 0.2F);
+  if (my_screen == NULL) {
+    my_screen = SDL_ConvertSurface(screen, screen->format, 0);
+    //SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
+    if (my_screen == NULL) {
+      pthread_mutex_unlock(&video_draw_mutex);
+      return false;
+    }
+    SDL_BlitScaled(sdl2surface, NULL, my_screen, NULL);
+    surfacefade32(my_screen, 0.2F);
+  }
+  SDL_BlitScaled(my_screen, NULL, screen, NULL);    // show background
 #else
     my_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, tempSurface->w, tempSurface->h, tempSurface->format->BitsPerPixel, 0,
                                      0, 0, 0);
@@ -282,7 +293,14 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       SDL_Delay(100);
       SDL_PollEvent(&event);
     }
+#ifdef SDL2
+  if (my_screen) {
     SDL_FreeSurface(my_screen);
+    my_screen = NULL;
+  }
+#else
+    SDL_FreeSurface(my_screen);
+#endif
     return false;
   }
 
@@ -377,7 +395,14 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       while (event.type != SDL_KEYDOWN) {  // wait for key pressed
         // GPH: Honor quit even if we're in the diskchoose state.
         if (SDL_QUIT == event.type) {
+#ifdef SDL2
+          if (my_screen) {
+            SDL_FreeSurface(my_screen);
+            my_screen = NULL;
+          }
+#else
           SDL_FreeSurface(my_screen);
+#endif
           SDL_PushEvent(&event); // push quit event
           return false;
         }
@@ -436,12 +461,17 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
           isdir = false;  // this is directory (catalog in Apple][ terminology)
         }
         index_file = act_file;  // remember current index
-        SDL_FreeSurface(my_screen);
+        // If my_screen is freed here because the user presses the 'Enter' key
+        // the surface will be recrated, recursively stack, and it will be ugly!
+        //SDL_FreeSurface(my_screen);
         return true;
       }
 
       if (keyboard[SDL_SCANCODE_ESCAPE]) {
-        SDL_FreeSurface(my_screen);
+        if (my_screen) {
+          SDL_FreeSurface(my_screen);
+          my_screen = NULL;
+        }
         return false;    // ESC has been pressed
       }
 
