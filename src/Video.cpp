@@ -1274,11 +1274,17 @@ bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   return false;
 }
 
+#define ROL_NIB(x) ( (((x)<<1)&0xF) | (((x)>>3)&1) )
+
 bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   unsigned char auxval = *(g_pTextBank1 + offset);
   unsigned char mainval = *(g_pTextBank0 + offset);
 
   if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
+		const BYTE auxval_h = auxval >> 4;
+		const BYTE auxval_l = auxval & 0xF;
+		auxval = (ROL_NIB(auxval_h)<<4) | ROL_NIB(auxval_l);	// Fix Bug #14879
+
     CopySource(xpixel, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((auxval & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), (auxval & 0xF0));
     CopySource(xpixel + 7, ypixel, 7, 8, SRCOFFS_LORES + ((x & 1) << 1), ((mainval & 0xF) << 4));
