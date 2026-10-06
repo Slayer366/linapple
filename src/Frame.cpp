@@ -351,68 +351,24 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
     case SDL_WINDOWEVENT:
       if (e->window.event == SDL_WINDOWEVENT_RESIZED) {
-        printf("OLD DIMENSIONS: %d  %d\n", g_ScreenWidth, g_ScreenHeight);
-
-        g_ScreenWidth = e->window.data1;
-        g_ScreenHeight = (e->window.data2 / 96) * 96;
-        if (g_ScreenHeight < 192) {
-          g_ScreenHeight = 192;
-        }
-
-        sdl2windowflags = 0;
-        if (bIamFullScreened) {
-          sdl2windowflags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-        }
-
-        if (sdl2window == NULL)
-          sdl2window = SDL_CreateWindow("linapple",
-                                       SDL_WINDOWPOS_UNDEFINED,
-                                       SDL_WINDOWPOS_UNDEFINED,
-                                       g_ScreenWidth, g_ScreenHeight,
-                                       sdl2windowflags);
-
         sdl2surface = SDL_GetWindowSurface(sdl2window);
 
-        if (screen) {
-          SDL_FreeSurface(screen);
-        }
-
-        screen = SDL_CreateRGBSurface(0,
-            g_ScreenWidth, g_ScreenHeight, sdl2surface->format->BitsPerPixel,
-            sdl2surface->format->Rmask, sdl2surface->format->Gmask,
-            sdl2surface->format->Bmask, sdl2surface->format->Amask);
-
-        if (screen == NULL) {
-          SDL_Quit();
+        if (sdl2surface == NULL) {
+          printf("SDL_GetWindowSurface failed: %s\n", SDL_GetError());
           return;
         }
 
-        g_WindowResized =
-          (g_ScreenWidth != SCREEN_WIDTH) |
-          (g_ScreenHeight != SCREEN_HEIGHT);
+        g_WindowResized = false;
 
-        printf("Screen size is %dx%d\n",
-               g_ScreenWidth, g_ScreenHeight);
-
-        if (g_WindowResized) {
-          origRect.x = origRect.y = newRect.x = newRect.y = 0;
-          origRect.w = SCREEN_WIDTH;
-          origRect.h = SCREEN_HEIGHT;
-          newRect.w = g_ScreenWidth;
-          newRect.h = g_ScreenHeight;
-
-          if ((g_nAppMode != MODE_LOGO) &&
-              (g_nAppMode != MODE_DEBUG)) {
-            VideoRedrawScreen();
-          }
+        if ((g_nAppMode != MODE_LOGO) &&
+            (g_nAppMode != MODE_DEBUG)) {
+          VideoRedrawScreen();
         }
       }
-      else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
-      {
+      else if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
         g_bAppActive = true;
       }
-      else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST)
-      {
+      else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
         g_bAppActive = false;
       }
       break;
