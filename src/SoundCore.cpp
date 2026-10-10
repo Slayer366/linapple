@@ -129,6 +129,7 @@ struct sample_buffer {
 
 sample_buffer *mix_buffer;
 sample_buffer *mock_buffer;
+sample_buffer *speech_buffer;
 
 bool muted;
 
@@ -168,6 +169,7 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
 
   mix_buffer = new sample_buffer(bufferSize);  // buffer for Apple2 speakers
   mock_buffer = new sample_buffer(bufferSize);  // buffer for Mockingboard
+  speech_buffer = new sample_buffer(bufferSize);  // buffer for SSI263 speech
 
   reInit();
   printf("SDL_MIX_MAXVOLUME=%d\n", SDL_MIX_MAXVOLUME);
@@ -181,6 +183,7 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
 void SDLSoundDriverUninit() {
   delete mix_buffer;
   delete mock_buffer;
+  delete speech_buffer;
   SDL_CloseAudio();
 }
 
@@ -188,6 +191,7 @@ void SDLSoundDriverUninit() {
 void reInit() {
   mix_buffer->reinit();
   mock_buffer->reinit();
+  speech_buffer->reinit();
 }
 
 void mute() {
@@ -222,6 +226,10 @@ void audioCallback(void *userdata, Uint8 *strm, int len) {
 #ifdef MOCKINGBOARD
     mock_buffer->mix_into(stream, str_len);
 #endif
+    // Smoothly stream and mix speech audio frames into the output channel fragment
+    if (speech_buffer->get_filled() > 0) {
+      speech_buffer->mix_into(stream, str_len);
+    }
   }
   SDL_UnlockAudio();
 }
@@ -287,7 +295,15 @@ void DSUploadBuffer(short *buffer, unsigned len) {
 }
 
 void sample_buffer::upload(sample_t *src_buffer, size_t len) {
-  const auto num = std::min(len, get_free()); // ignore overrun (drop samples)
+//  const auto num = std::min(len, get_free()); // ignore overrun (drop samples)
+  const auto free = get_free();
+  const auto num = std::min(len, free);
+
+//  if (num < len) {
+//    printf("sample_buffer::upload OVERRUN: requested=%zu free=%zu dropped=%zu filled=%zu\n",
+//           len, free, len - num, get_filled());
+//  }
+
   if ((write_index + num) < buffer.size()) {
     std::copy_n(src_buffer, num, buffer.begin()+write_index);
     write_index += num;
@@ -304,4 +320,34 @@ void sample_buffer::upload(sample_t *src_buffer, size_t len) {
 // GPH 01042015: buffer contains interleaved stereo data: left sample, right sample, left sample, etc...
 void DSUploadMockBuffer(short *buffer, unsigned len) {
   mock_buffer->upload(buffer, len);
+}
+
+void DSSpeechStart(short *buffer, unsigned len) {
+  if (speech_buffer) {
+    SDL_LockAudio();
+    speech_buffer->upload(buffer, len);
+    SDL_UnlockAudio();
+  }
+}
+
+void DSSpeechStopAndReset() {
+    if (speech_buffer) {
+        SDL_LockAudio();
+        speech_buffer->reinit();
+        SDL_UnlockAudio();
+    }
+}
+
+bool DSSpeechIsActive() {
+  if (!speech_buffer) {
+    return false;
+  }
+  return speech_buffer->get_filled() != 0;
+}
+
+unsigned int DSSpeechGetFreeSpace() {
+  if (!speech_buffer) {
+    return 0;
+  }
+  return speech_buffer->get_free();
 }
