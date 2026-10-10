@@ -62,10 +62,6 @@ By Mark Ormond.
 #include "AlertHooks.h"
 #endif
 
-#ifdef __APPLE__
-#include "AlertHooks.h"
-#endif
-
 // On-screen keyboard
 #include "OSK.h"
 
@@ -1022,6 +1018,7 @@ void PrintHelp()
          "  --conf <file>  use <file> instead of any default config files\n"
          "  --d1 <file>    insert disk image into first drive\n"
          "  --d2 <file>    insert disk image into second drive\n"
+         "  --hd1 <file>   mount hard disk image as first HDD\n"
          "  --ser <file>   serial port to use and map on slot2\n"
          "  -b|--autoboot  boot/reset at startup\n"
          "  -f             run fullscreen\n"
@@ -1042,6 +1039,7 @@ int main(int argc, char *argv[])
   LPSTR szConfigurationFile = NULL;
   LPSTR szImageName_drive1 = NULL;
   LPSTR szImageName_drive2 = NULL;
+  LPSTR szImageName_hd1 = NULL;
   LPSTR szSnapshotFile = NULL;
 // colinleroy - Basic fix for serial emulation
   LPSTR szSerialFile = NULL;
@@ -1053,9 +1051,11 @@ int main(int argc, char *argv[])
                                      {"conf",     required_argument, 0, 0},
                                      {"d1",       required_argument, 0, 0},
                                      {"d2",       required_argument, 0, 0},
+                                     {"hd1",      required_argument, 0, 0},
                                      {"ser",      required_argument, 0, 0},
                                      {"help",     0,                 0, 0},
                                      {"state",    required_argument, 0, 0},
+                                     {"benchmark",no_argument,       0, 0},
                                      {0,          0,                 0, 0}};
 
 #ifdef SDL2
@@ -1113,6 +1113,8 @@ int main(int argc, char *argv[])
           szImageName_drive1 = optarg;
         } else if (!strcmp(optname, "d2")) {
           szImageName_drive2 = optarg;
+        } else if (!strcmp(optname, "hd1")) {
+          szImageName_hd1 = optarg;
         } else if (!strcmp(optname, "help")) {
           PrintHelp();
           return 0;
@@ -1209,6 +1211,14 @@ int main(int argc, char *argv[])
         LOG("Cannot insert image %s into drive 2.", szImageName_drive2);
         break;
       }
+    }
+    // This mounts a hard disk as the first HDD
+    if (szImageName_hd1) {
+      if (!HD_InsertDisk2(0, szImageName_hd1)) {
+        LOG("Failed to mount %s as hard disk image.", szImageName_hd1);
+        break;
+      }
+      hddenabled = true;
     }
 
     FrameCreateWindow();
