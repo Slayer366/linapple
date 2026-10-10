@@ -38,6 +38,7 @@ By Mark Ormond.
 #include <cassert>
 #include <string>
 #include <vector>
+#include <cctype>
 #include <X11/Xlib.h>
 #include "Log.h"
 #include "MouseInterface.h"
@@ -1045,7 +1046,8 @@ int main(int argc, char *argv[])
   LPSTR szSerialFile = NULL;
 
   int opt;
-  int optind = 0;
+//  int optind = 0;
+  int longindex = 0;
   const char *optname;
   static struct option longopts[] = {{"autoboot", 0,                 0, 0},
                                      {"conf",     required_argument, 0, 0},
@@ -1064,7 +1066,8 @@ int main(int argc, char *argv[])
   XInitThreads();
 #endif
 
-  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) != -1) {
+//  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &optind)) != -1) {
+  while ((opt = getopt_long(argc, argv, "1:2:abfhlr:", longopts, &longindex)) != -1) {
     switch (opt) {
       case '1':
         szImageName_drive1 = optarg;
@@ -1102,7 +1105,8 @@ int main(int argc, char *argv[])
       #endif
 
       case 0:
-        optname = longopts[optind].name;
+//        optname = longopts[optind].name;
+        optname = longopts[longindex].name;
         if (!strcmp(optname, "autoboot")) {
           bBoot = true;
         } else if (!strcmp(optname, "benchmark")) {
@@ -1135,6 +1139,57 @@ int main(int argc, char *argv[])
         PrintHelp();
         return 255;
     }
+  }
+
+  // Allow single disk image to be autobooted by passing just its filename.
+  const int positionalCount = argc - optind;
+  if (positionalCount > 1) {
+    fprintf(stderr, "Error: specify only one disk image.\n"
+                    "Use --d1 and --d2 to mount multiple floppy disks.\n");
+    return 255;
+  }
+
+  if (positionalCount == 1) {
+    const char *filename = argv[optind];
+
+    // Do not silently override an explicitly selected drive or HDD image.
+    if (szImageName_drive1 || szImageName_drive2 || szImageName_hd1) {
+      fprintf(stderr, "Error: disk image '%s' cannot be combined "
+                      "with --d1, --d2, or --hd1.\n", filename);
+      return 255;
+    }
+
+    std::string extension;
+    const std::string imageName(filename);
+    const std::string::size_type dot = imageName.find_last_of('.');
+    if (dot != std::string::npos)
+      extension = imageName.substr(dot);
+
+    // Compare the extension without regard to case.
+    for (std::string::size_type i = 0; i < extension.size(); ++i)
+      extension[i] = (char)tolower((unsigned char)extension[i]);
+
+    if (extension == ".hdv") {
+      szImageName_hd1 = (LPSTR)filename;
+    } else if (extension == ".dsk" ||
+               extension == ".do"  ||
+               extension == ".po"  ||
+               extension == ".nib" ||
+               extension == ".nb2" ||
+               extension == ".iie" ||
+               extension == ".woz" ||
+               extension == ".prg" ||
+               extension == ".apl") {
+      szImageName_drive1 = (LPSTR)filename;
+    } else {
+      fprintf(stderr, "Error: unsupported disk image or file not found: '%s'.\n", filename);
+      fprintf(stderr, "Supported floppy extensions: .dsk, .do, .po, .nib, .nb2, .iie, .woz, .prg, .apl\n");
+      fprintf(stderr, "Supported hard disk extension: .hdv\n");
+      return 255;
+    }
+
+    // autoboot
+    bBoot = true;
   }
 
   if (bLog) {
