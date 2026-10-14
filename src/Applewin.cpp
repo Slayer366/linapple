@@ -1031,12 +1031,14 @@ void PrintHelp()
          "\n");
 }
 
+bool bBenchMark = false;
+
 int main(int argc, char *argv[])
 {
   bool bLog = false;
   bool bSetFullScreen = false;
   bool bBoot = false;
-  bool bBenchMark = false;
+//  bool bBenchMark = false;
   LPSTR szConfigurationFile = NULL;
   LPSTR szImageName_drive1 = NULL;
   LPSTR szImageName_drive2 = NULL;
@@ -1169,22 +1171,32 @@ int main(int argc, char *argv[])
     for (std::string::size_type i = 0; i < extension.size(); ++i)
       extension[i] = (char)tolower((unsigned char)extension[i]);
 
+    // These extensions can describe either floppy or hard disk images,
+    // or contain archives whose contents cannot be inferred here.
+    if (extension == ".po"   ||
+        extension == ".2mg"  ||
+        extension == ".2img" ||
+        extension == ".gz"   ||
+        extension == ".zip") {
+      fprintf(stderr, "Error: cannot determine the disk type for '%s' "
+                      "from its extension alone.\n", filename);
+      fprintf(stderr, "Specify --d1 for a floppy disk or --hd1 "
+                      "for a hard disk image.\n");
+      return 255;
+    }
+
     if (extension == ".hdv") {
       szImageName_hd1 = (LPSTR)filename;
     } else if (extension == ".dsk" ||
                extension == ".do"  ||
-               extension == ".po"  ||
+               extension == ".bin" ||
                extension == ".nib" ||
-               extension == ".nb2" ||
-               extension == ".iie" ||
-               extension == ".woz" ||
-               extension == ".prg" ||
-               extension == ".apl") {
+               extension == ".woz") {
       szImageName_drive1 = (LPSTR)filename;
     } else {
       fprintf(stderr, "Error: unsupported disk image or file not found: '%s'.\n", filename);
-      fprintf(stderr, "Supported floppy extensions: .dsk, .do, .po, .nib, .nb2, .iie, .woz, .prg, .apl\n");
-      fprintf(stderr, "Supported hard disk extension: .hdv\n");
+      fprintf(stderr, "Supported quick floppy extensions: .dsk, .do, .bin, .nib, .woz\n");
+      fprintf(stderr, "Supported quick hard disk extension: .hdv\n");
       return 255;
     }
 
