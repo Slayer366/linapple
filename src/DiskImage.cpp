@@ -121,7 +121,7 @@ static imagetyperec imagetype[IMAGETYPES] = {
     { TEXT(".nib"), TEXT(".do;.iie;.po;.prg"), Nib1Detect, NULL, Nib1Read, Nib1Write },
     { TEXT(".nb2"), TEXT(".do;.iie;.po;.prg"), Nib2Detect, NULL, Nib2Read, Nib2Write },
     { TEXT(".iie"), TEXT(".do.;.nib;.po;.prg"), IieDetect, NULL, IieRead, IieWrite },
-    { TEXT(".woz"), TEXT(".do;.dsk;.iie;.nib;.po;.prg"), WozDetect, NULL, WozRead, NULL }
+    { TEXT(".woz"), TEXT(".do;.iie;.nib;.po;.prg"), WozDetect, NULL, WozRead, NULL }
 };
 
 static unsigned char diskbyte[0x40] = {0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2,
