@@ -10,6 +10,10 @@
 #define  WOZ2_TRKS_OFFSET      256 /* bytes from beginning of WOZ2 file */
 #define  WOZ2_TRKS_MAX_SIZE    160
 #define  WOZ2_TRK_SIZE           8
+#define  WOZ1_HEADER_SIZE      256
+#define  WOZ1_TRACK_SIZE      6656
+#define  WOZ1_TRACK_DATA_SIZE 6646
+#define  WOZ1_TMAP_OFFSET       88 /* bytes from beginning of WOZ1 file */
 
 bool ImageBoot(HIMAGE);
 void ImageClose(HIMAGE);

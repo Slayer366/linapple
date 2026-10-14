@@ -410,7 +410,7 @@ void DiskInitialize()
 {
   int loop = DRIVES;
   while (loop--) {
-    ZeroMemory(&g_aFloppyDisk[loop], sizeof(Disk_t));
+    memset(&g_aFloppyDisk[loop], 0, sizeof(Disk_t));
   }
 }
 
@@ -483,7 +483,7 @@ int DiskInsert(int drive, LPCTSTR imageFileName, bool writeProtected, bool creat
   if (fptr->imagehandle) {
     RemoveDisk(drive);
   }
-  ZeroMemory(fptr, sizeof(Disk_t));
+  memset(fptr, 0, sizeof(Disk_t));
 
   // Let us deal with .gz files
   int lf = strlen(imageFileName);
@@ -1003,7 +1003,7 @@ unsigned int DiskSetSnapshot(SS_CARD_DISK2 *pSS, unsigned int)
   for (unsigned int i = 0; i < 2; i++) {
     bool bImageError = false;
 
-    ZeroMemory(&g_aFloppyDisk[i], sizeof(Disk_t));
+    memset(&g_aFloppyDisk[i], 0, sizeof(Disk_t));
     if (pSS->Unit[i].szFileName[0] == 0x00)
       continue;
 

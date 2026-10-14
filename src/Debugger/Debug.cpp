@@ -8688,7 +8688,7 @@ void DebugInitialize()
 
   AssemblerOff(); // update prompt
 
-  ZeroMemory( g_aConsoleDisplay, sizeof( g_aConsoleDisplay ) ); // CONSOLE_WIDTH * CONSOLE_HEIGHT );
+  memset( g_aConsoleDisplay, 0, sizeof( g_aConsoleDisplay ) ); // CONSOLE_WIDTH * CONSOLE_HEIGHT );
   ConsoleInputReset();
 
   for( int iWindow = 0; iWindow < NUM_WINDOWS; iWindow++ )
@@ -8710,9 +8710,9 @@ void DebugInitialize()
   WindowUpdateConsoleDisplayedSize();
 
   // CLEAR THE BREAKPOINT AND WATCH TABLES
-  ZeroMemory( g_aBreakpoints     , MAX_BREAKPOINTS       * sizeof(Breakpoint_t));
-  ZeroMemory( g_aWatches         , MAX_WATCHES           * sizeof(Watches_t) );
-  ZeroMemory( g_aZeroPagePointers, MAX_ZEROPAGE_POINTERS * sizeof(ZeroPagePointers_t));
+  memset( g_aBreakpoints     , 0, MAX_BREAKPOINTS       * sizeof(Breakpoint_t));
+  memset( g_aWatches         , 0, MAX_WATCHES           * sizeof(Watches_t) );
+  memset( g_aZeroPagePointers, 0, MAX_ZEROPAGE_POINTERS * sizeof(ZeroPagePointers_t));
 
   // Load Main, Applesoft, and User Symbols
   extern bool g_bSymbolsDisplayMissingFile;

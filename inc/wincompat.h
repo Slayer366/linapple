@@ -212,12 +212,6 @@ typedef struct tagPOINT {
 #define _tcslen     strlen
 #define _tcsxfrm    strxfrm
 
-#define MoveMemory(Destination, Source, Length) memmove((Destination),(Source),(Length))
-#define FillMemory(Destination, Length, Fill) memset((Destination),(Fill),(Length))
-#define EqualMemory(Destination, Source, Length) (!memcmp((Destination),(Source),(Length)))
-#define CopyMemory(Destination, Source, Length) memcpy((Destination),(Source),(Length))
-#define ZeroMemory(Destination, Length) memset((Destination),0,(Length))
-
 #define GetTickCount SDL_GetTicks
 
 #ifdef _DEBUG

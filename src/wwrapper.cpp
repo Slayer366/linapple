@@ -63,7 +63,7 @@ LPVOID VirtualAlloc(LPVOID lpAddress, size_t dwSize, unsigned int flAllocationTy
   void *mymemory;
   mymemory = malloc(dwSize);
   if (flAllocationType & 0x1000)
-    ZeroMemory(mymemory, dwSize); // original VirtualAlloc does this (if..)
+    memset(mymemory, 0, dwSize); // original VirtualAlloc does this (if..)
   return mymemory;
 }
 

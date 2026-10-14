@@ -2798,7 +2798,7 @@ void DrawSoftSwitches( int iSoftSwitch )
 void DrawSourceLine( int iSourceLine, RECT &rect )
 {
 	char sLine[ CONSOLE_WIDTH ];
-	ZeroMemory( sLine, CONSOLE_WIDTH );
+	memset( sLine, 0, CONSOLE_WIDTH );
 
 	if ((iSourceLine >=0) && (iSourceLine < g_AssemblerSourceBuffer.GetNumLines() ))
 	{

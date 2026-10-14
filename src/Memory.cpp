@@ -626,7 +626,7 @@ void MemUpdatePaging(bool initialize, bool updatewriteonly) {
   // Save the current paging shadow table
   LPBYTE oldshadow[256];
   if (!(initialize || updatewriteonly /*|| fastpaging*/ )) {
-    CopyMemory(oldshadow, memshadow, 256 * sizeof(LPBYTE));
+    memcpy(oldshadow, memshadow, 256 * sizeof(LPBYTE));
   }
 
   // Update the paging tables based on the new paging switch values
@@ -765,9 +765,9 @@ void MemUpdatePaging(bool initialize, bool updatewriteonly) {
       if (initialize || (oldshadow[loop] != memshadow[loop])) {
         if ((!(initialize)) && ((*(memdirty + loop) & 1) || (loop <= 1))) {
           *(memdirty + loop) &= ~1;
-          CopyMemory(oldshadow[loop], mem + (loop << 8), 256);
+          memcpy(oldshadow[loop], mem + (loop << 8), 256);
         }
-        CopyMemory(mem + (loop << 8), memshadow[loop], 256);
+        memcpy(mem + (loop << 8), memshadow[loop], 256);
       }
     }
   }
@@ -849,8 +849,8 @@ void MemDestroy() {
 
   mem = NULL;
 
-  ZeroMemory(memwrite, sizeof(memwrite));
-  ZeroMemory(memshadow, sizeof(memshadow));
+  memset(memwrite, 0, sizeof(memwrite));
+  memset(memshadow, 0, sizeof(memshadow));
 }
 
 bool MemGet80Store() {
@@ -1056,12 +1056,12 @@ int MemInitialize() // returns -1 if any error during initialization
 
 void MemReset() {
   // Initialize the paging tables
-  ZeroMemory(memshadow, 256 * sizeof(LPBYTE));
-  ZeroMemory(memwrite, 256 * sizeof(LPBYTE));
+  memset(memshadow, 0, 256 * sizeof(LPBYTE));
+  memset(memwrite, 0, 256 * sizeof(LPBYTE));
 
   // Initialize the ram images
-  ZeroMemory(memaux, 0x10000);
-  ZeroMemory(memmain, 0x10000);
+  memset(memaux, 0, 0x10000);
+  memset(memmain, 0, 0x10000);
 
   int iByte;
 

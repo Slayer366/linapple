@@ -516,7 +516,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
               HDDStatus = DISK_STATUS_WRITE;
               unsigned int bw = GetFileSize(pHDD->hd_file, NULL);
               if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
-                MoveMemory(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
+                memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
                 SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
                 if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
                   pHDD->hd_error = 0;
@@ -528,14 +528,14 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
               } else {
                 unsigned int fsize = SetFilePointer(pHDD->hd_file, 0, NULL, FILE_END);
                 unsigned int addblocks = pHDD->hd_diskblock - (fsize / 512);
-                FillMemory(pHDD->hd_buf, 512, 0);
+                memset(pHDD->hd_buf, 0, 512);
                 while (addblocks--) {
                   unsigned int bw;
                   WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
                 }
                 if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
                   // seek to block
-                  MoveMemory(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
+                  memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
                   if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
                     pHDD->hd_error = 0;
                     r = 0;
