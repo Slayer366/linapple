@@ -204,7 +204,7 @@ void Decode62(LPBYTE imageptr)
   static bool tablegenerated = 0;
   static unsigned char sixbitbyte[0x80];
   if (!tablegenerated) {
-    ZeroMemory(sixbitbyte, 0x80);
+    memset(sixbitbyte, 0, 0x80);
     int loop = 0;
     while (loop < 0x40) {
       sixbitbyte[diskbyte[loop] - 0x80] = loop << 2;
@@ -260,7 +260,7 @@ void Decode62(LPBYTE imageptr)
 
 void DenibblizeTrack(LPBYTE trackimage, bool dosorder, int nibbles)
 {
-  ZeroMemory(workbuffer, 0x1000);
+  memset(workbuffer, 0, 0x1000);
 
   // Search through the track image for each sector. For every sector
   // we find, copy the nibblized data for that sector into the work
@@ -307,7 +307,7 @@ void DenibblizeTrack(LPBYTE trackimage, bool dosorder, int nibbles)
 
 unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
 {
-  ZeroMemory(workbuffer + 4096, 4096);
+  memset(workbuffer + 4096, 0, 4096);
   LPBYTE imageptr = trackImageBuffer;
   unsigned char sector = 0;
 
@@ -358,7 +358,7 @@ unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
     *(imageptr++) = 0xD5;
     *(imageptr++) = 0xAA;
     *(imageptr++) = 0xAD;
-    CopyMemory(imageptr, Code62(sectornumber[dosorder][sector]), 343);
+    memcpy(imageptr, Code62(sectornumber[dosorder][sector]), 343);
     imageptr += 343;
     *(imageptr++) = 0xDE;
     *(imageptr++) = 0xAA;
@@ -377,9 +377,9 @@ unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
 void SkewTrack(int track, int nibbles, LPBYTE trackImageBuffer)
 {
   int skewbytes = (track * 768) % nibbles;
-  CopyMemory(workbuffer, trackImageBuffer, nibbles);
-  CopyMemory(trackImageBuffer, workbuffer + skewbytes, nibbles - skewbytes);
-  CopyMemory(trackImageBuffer + nibbles - skewbytes, workbuffer, skewbytes);
+  memcpy(workbuffer, trackImageBuffer, nibbles);
+  memcpy(trackImageBuffer, workbuffer + skewbytes, nibbles - skewbytes);
+  memcpy(trackImageBuffer + nibbles - skewbytes, workbuffer, skewbytes);
 }
 
 // RAW PROGRAM IMAGE (APL) FORMAT IMPLEMENTATION
@@ -447,7 +447,7 @@ unsigned int DoDetect(LPBYTE imageptr, unsigned int imagesize) {
 
 void DoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles) {
   SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
-  ZeroMemory(workbuffer, 4096);
+  memset(workbuffer, 0, 4096);
   unsigned int bytesRead;
   ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
   *nibbles = NibblizeTrack(trackImageBuffer, 1, track);
@@ -458,7 +458,7 @@ void DoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuff
 
 void DoWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
 {
-  ZeroMemory(workbuffer, 4096);
+  memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 1, nibbles);
   SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
   unsigned int bytesWritten;
@@ -501,7 +501,7 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuf
       *nibbles = 0;
       return;
     }
-    ZeroMemory(ptr->header, 88);
+    memset(ptr->header, 0, 88);
     unsigned int bytesRead;
     SetFilePointer(ptr->file, 0, NULL, FILE_BEGIN);
     ReadFile(ptr->file, ptr->header, 88, &bytesRead, NULL);
@@ -511,7 +511,7 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuf
     // If this image contains user data, read the track and nibblize it
     IieConvertSectorOrder(ptr->header + 14);
     SetFilePointer(ptr->file, (track << 12) + 30, NULL, FILE_BEGIN);
-    ZeroMemory(workbuffer, 4096);
+    memset(workbuffer, 0, 4096);
     unsigned int bytesRead;
     ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
     *nibbles = NibblizeTrack(trackImageBuffer, 2, track);
@@ -523,7 +523,7 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuf
       offset += *(LPWORD)(ptr->header + (track << 1) + 14);
     }
     SetFilePointer(ptr->file, offset, NULL, FILE_BEGIN);
-    ZeroMemory(trackImageBuffer, *nibbles);
+    memset(trackImageBuffer, 0, *nibbles);
     unsigned int bytesRead;
     ReadFile(ptr->file, trackImageBuffer, *nibbles, &bytesRead, NULL);
   }
@@ -615,7 +615,7 @@ unsigned int PoDetect(LPBYTE imageptr, unsigned int imagesize) {
 void PoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
 {
   SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
-  ZeroMemory(workbuffer, 4096);
+  memset(workbuffer, 0, 4096);
   unsigned int bytesRead;
   ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
   *nibbles = NibblizeTrack(trackImageBuffer, 0, track);
@@ -626,7 +626,7 @@ void PoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuff
 
 void PoWrite(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackimage, int nibbles)
 {
-  ZeroMemory(workbuffer, 4096);
+  memset(workbuffer, 0, 4096);
   DenibblizeTrack(trackimage, 0, nibbles);
   SetFilePointer(ptr->file, ptr->offset + (track << 12), NULL, FILE_BEGIN);
   unsigned int bytesWritten;
@@ -683,7 +683,7 @@ static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
 
 void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
 {
-  unsigned int bytesRead;
+  unsigned int bytesRead = 0;
   if (!ptr->header) {
     ptr->header = (LPBYTE) VirtualAlloc(NULL, WOZ2_HEADER_SIZE, 0x1000, 0);
     if (!ptr->header) {
@@ -940,6 +940,7 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
   unsigned int size = GetFileSize(file, NULL);
   LPBYTE view = NULL;
   LPBYTE pImage = NULL;
+  unsigned int imageOffset = 0;
 
   const unsigned int UNKNOWN_FORMAT = 0xFFFFFFFF;
   unsigned int format = UNKNOWN_FORMAT;
@@ -981,6 +982,7 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
       if (format == UNKNOWN_FORMAT)
         format = possibleformat;
 
+      imageOffset = (unsigned int)(pImage - view);
       free(view); // free memory block, allocated before
     }
   } else {
@@ -999,7 +1001,7 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
     // Create a record for the file, and return an image handle
     *hDiskImage_ = (HIMAGE) VirtualAlloc(NULL, sizeof(imageinforec), 0x1000, 0);
     if (*hDiskImage_) {
-      ZeroMemory(*hDiskImage_, sizeof(imageinforec));
+      memset(*hDiskImage_, 0, sizeof(imageinforec));
       // Do this in DiskInsert
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-truncation"
@@ -1007,7 +1009,8 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
 #pragma GCC diagnostic pop
       ((imageinfoptr) *hDiskImage_)->format = format;
       ((imageinfoptr) *hDiskImage_)->file = file;
-      ((imageinfoptr) *hDiskImage_)->offset = pImage - view;
+//      ((imageinfoptr) *hDiskImage_)->offset = pImage - view;
+      ((imageinfoptr)*hDiskImage_)->offset = imageOffset;
       ((imageinfoptr) *hDiskImage_)->writeProtected = *pWriteProtected_;
 
       for (int track = 0; track < TRACKS; track++) {
