@@ -200,3 +200,5 @@ unsigned char VideoCheckVbl(unsigned short pc, unsigned short addr, unsigned cha
 unsigned char VideoSetMode(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft);
 
 extern bool video_frame_ready;
+
+extern bool bBenchMark;
