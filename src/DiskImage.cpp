@@ -95,7 +95,11 @@ bool PrgBoot(imageinfoptr ptr);
 
 unsigned int PrgDetect(LPBYTE imageptr, unsigned int imagesize);
 
-unsigned int Woz2Detect(LPBYTE imageptr, unsigned int imagesize);
+unsigned int WozDetect(LPBYTE imageptr, unsigned int imagesize);
+
+void WozRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
+
+void Woz1Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
 
 void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles);
 
@@ -117,7 +121,7 @@ static imagetyperec imagetype[IMAGETYPES] = {
     { TEXT(".nib"), TEXT(".do;.iie;.po;.prg"), Nib1Detect, NULL, Nib1Read, Nib1Write },
     { TEXT(".nb2"), TEXT(".do;.iie;.po;.prg"), Nib2Detect, NULL, Nib2Read, Nib2Write },
     { TEXT(".iie"), TEXT(".do.;.nib;.po;.prg"), IieDetect, NULL, IieRead, IieWrite },
-    { TEXT(".woz"), TEXT(".do;.dsk;.iie;.nib;.po;.prg"), Woz2Detect, NULL, Woz2Read, NULL }
+    { TEXT(".woz"), TEXT(".do;.dsk;.iie;.nib;.po;.prg"), WozDetect, NULL, WozRead, NULL }
 };
 
 static unsigned char diskbyte[0x40] = {0x96, 0x97, 0x9A, 0x9B, 0x9D, 0x9E, 0x9F, 0xA6, 0xA7, 0xAB, 0xAC, 0xAD, 0xAE, 0xAF, 0xB2,
@@ -285,7 +289,7 @@ void DenibblizeTrack(LPBYTE trackimage, bool dosorder, int nibbles)
           offset = 0;
         }
       }
-      if ((bytenum == 3) && (byteval[1] = 0xAA)) {
+      if ((bytenum == 3) && (byteval[1] == 0xAA)) {
         int loop = 0;
         int tempoffset = offset;
         while (loop < 384) {
@@ -665,15 +669,21 @@ unsigned int PrgDetect(LPBYTE imageptr, unsigned int imagesize)
 // WOZ2 (woz) format implementation
 // see: https://applesaucefdc.com/woz/reference2/
 
-unsigned int Woz2Detect(LPBYTE imageptr, unsigned int imagesize)
+unsigned int WozDetect(LPBYTE imageptr, unsigned int imagesize)
 {
-  if (strncmp((const char *) imageptr, "WOZ2\xFF\n\r\n", 8) != 0) {
+  if (!imageptr || imagesize < 8) {
     return 0;
   }
-  if (imagesize < WOZ2_HEADER_SIZE) {
-    return 0;
+
+  if (memcmp(imageptr, "WOZ1\xFF\n\r\n", 8) == 0) {
+    return imagesize >= WOZ1_HEADER_SIZE ? 2 : 0;
   }
-  return 2;
+
+  if (memcmp(imageptr, "WOZ2\xFF\n\r\n", 8) == 0) {
+    return imagesize >= WOZ2_HEADER_SIZE ? 2 : 0;
+  }
+
+  return 0;
 }
 
 static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
@@ -681,29 +691,230 @@ static unsigned int woz2_scan_sync_bytes(const uint8_t* buffer,
                                          const unsigned int sync_bytes_needed,
                                          const unsigned int trailing_0_count);
 
+static unsigned int woz1_get_bit(const uint8_t* buffer, unsigned int bit_index)
+{
+  return (buffer[bit_index / 8] &
+          (0x80 >> (bit_index % 8))) != 0 ? 1U : 0U;
+}
+
+// Most WOZ tracks contain conventional sync fields, which let the legacy
+// nibble-based Disk II interface find byte boundaries. Some copy-protected
+// tracks do not. Preserve those tracks by packing the recorded bit cells in
+// their original order instead of treating a missing sync field as an empty
+// track. The Disk II reader consumes these bytes as a continuous bitstream.
+static int WozPackRawBits(const uint8_t* bits, unsigned int bitCount, LPBYTE trackImageBuffer)
+{
+  unsigned int byteCount = (bitCount + 7U) / 8U;
+  if (byteCount > NIBBLES) {
+    byteCount = NIBBLES;
+  }
+
+  for (unsigned int byte = 0; byte < byteCount; ++byte) {
+    uint8_t value = 0;
+    for (unsigned int bit = 0; bit < 8; ++bit) {
+      const unsigned int bitIndex = byte * 8U + bit;
+      value <<= 1;
+      if (bitIndex < bitCount && woz1_get_bit(bits, bitIndex))
+        value |= 1;
+    }
+    trackImageBuffer[byte] = value;
+  }
+
+  return (int)byteCount;
+}
+
+void Woz1Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+{
+  if (nibbles) {
+    *nibbles = 0;
+  }
+
+  if (!ptr || !trackImageBuffer || !nibbles || track < 0 || track >= TRACKS || quartertrack < 0) {
+    return;
+  }
+
+  // Disk.cpp passes the stepper phase (0..69), not a quarter-track index.
+  // Each phase step is a half-track, so the WOZ TMAP index advances by two.
+  const unsigned int tmapIndex = 2U * (unsigned int)quartertrack;
+
+  if (tmapIndex >= WOZ2_TMAP_SIZE) {
+    return;
+  }
+
+  // Read the WOZ1 header, including its track map.
+  uint8_t header[WOZ1_HEADER_SIZE];
+  DWORD bytesRead = 0;
+
+  if (SetFilePointer(ptr->file, (LONG)ptr->offset, NULL, FILE_BEGIN) < 0) {
+    return;
+  }
+
+  if (!ReadFile(ptr->file, header, sizeof(header), &bytesRead, NULL) || bytesRead != sizeof(header)) {
+    return;
+  }
+
+  if (memcmp(header, "WOZ1\xFF\n\r\n", 8) != 0) {
+    return;
+  }
+
+  const unsigned int trackIndex = header[WOZ1_TMAP_OFFSET + tmapIndex];
+
+  // 0xFF means this track is not present in the image.
+  if (trackIndex == 0xFF) {
+    for (unsigned int i = 0; i < NIBBLES; ++i) {
+      trackImageBuffer[i] = (uint8_t)(rand() & 0xFF);
+    }
+    *nibbles = NIBBLES;
+    return;
+  }
+
+  // Each WOZ1 track slot is a fixed-size record.
+  const uint64_t recordOffset = (uint64_t)ptr->offset + WOZ1_HEADER_SIZE + (uint64_t)trackIndex * WOZ1_TRACK_SIZE;
+
+  const DWORD fileSize = GetFileSize(ptr->file, NULL);
+
+  if (recordOffset > fileSize || WOZ1_TRACK_SIZE > (uint64_t)fileSize - recordOffset || recordOffset > 0x7FFFFFFFULL) {
+    return;
+  }
+
+  uint8_t record[WOZ1_TRACK_SIZE];
+
+  if (SetFilePointer(ptr->file, (LONG)recordOffset, NULL, FILE_BEGIN) < 0) {
+    return;
+  }
+
+  bytesRead = 0;
+
+  if (!ReadFile(ptr->file, record, sizeof(record), &bytesRead, NULL) || bytesRead != sizeof(record)) {
+    return;
+  }
+
+  // WOZ1 track metadata is little-endian:
+  // bytesUsed at 6646, bitCount at 6648.
+  const unsigned int bytesUsed = (unsigned int)record[6646] | ((unsigned int)record[6647] << 8);
+  const unsigned int bitCount = (unsigned int)record[6648] | ((unsigned int)record[6649] << 8);
+
+  if (bytesUsed == 0 || bytesUsed > WOZ1_TRACK_DATA_SIZE || bitCount == 0 || bitCount > bytesUsed * 8U) {
+    return;
+  }
+
+  // Find the sync pattern, using the same strategy as WOZ2.
+  unsigned int bitIndex = woz2_scan_sync_bytes(record, bitCount, 4, 2);
+
+  if (bitIndex == 0) {
+    bitIndex = woz2_scan_sync_bytes(record, bitCount, 7, 1);
+  }
+
+  if (bitIndex == 0) {
+    *nibbles = WozPackRawBits(record, bitCount, trackImageBuffer);
+    return;
+  }
+
+  unsigned int bitsLeft = bitCount;
+  unsigned int nibblesDone = 0;
+
+  if (bitIndex >= bitCount) {
+    bitIndex -= bitCount;
+  }
+
+  while (nibblesDone < NIBBLES && bitsLeft > 0) {
+    // Find the next one-bit marking the beginning of a nibble.
+    while (bitsLeft > 0) {
+      if (woz1_get_bit(record, bitIndex) != 0) {
+        break;
+      }
+
+      ++bitIndex;
+      if (bitIndex >= bitCount) {
+        bitIndex -= bitCount;
+      }
+
+      --bitsLeft;
+    }
+
+    if (bitsLeft < 8) {
+      break;
+    }
+
+    uint8_t nibble = 0;
+
+    for (int bit = 0; bit < 8; ++bit) {
+      nibble = (uint8_t)((nibble << 1) | woz1_get_bit(record, bitIndex));
+
+      ++bitIndex;
+      if (bitIndex >= bitCount) {
+        bitIndex -= bitCount;
+      }
+    }
+
+    bitsLeft -= 8;
+    trackImageBuffer[nibblesDone++] = nibble;
+  }
+
+  *nibbles = (int)nibblesDone;
+}
+
+void WozRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
+{
+  unsigned char signature[8] = {0};
+  unsigned int bytesRead = 0;
+
+  *nibbles = 0;
+
+  if (!ptr || !trackImageBuffer || track < 0 || track >= TRACKS) {
+    return;
+  }
+
+  SetFilePointer(ptr->file, ptr->offset, NULL, FILE_BEGIN);
+
+  if (!ReadFile(ptr->file, signature, sizeof(signature), &bytesRead, NULL) || bytesRead != sizeof(signature)) {
+    return;
+  }
+
+  if (memcmp(signature, "WOZ1\xFF\n\r\n", 8) == 0) {
+    Woz1Read(ptr, track, quartertrack, trackImageBuffer, nibbles);
+    return;
+  }
+
+  if (memcmp(signature, "WOZ2\xFF\n\r\n", 8) == 0) {
+    Woz2Read(ptr, track, quartertrack, trackImageBuffer, nibbles);
+  }
+}
+
 void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuffer, int *nibbles)
 {
   unsigned int bytesRead = 0;
+  *nibbles = 0;
+
+  if (!ptr || !trackImageBuffer || track < 0 || track >= TRACKS) {
+    return;
+  }
+
   if (!ptr->header) {
     ptr->header = (LPBYTE) VirtualAlloc(NULL, WOZ2_HEADER_SIZE, 0x1000, 0);
     if (!ptr->header) {
-      *nibbles = 0;
       return;
     }
     SetFilePointer(ptr->file, ptr->offset, NULL, FILE_BEGIN);
-    ReadFile(ptr->file, ptr->header, WOZ2_HEADER_SIZE, &bytesRead, NULL);
-    assert(bytesRead == WOZ2_HEADER_SIZE);
+    if (!ReadFile(ptr->file, ptr->header, WOZ2_HEADER_SIZE, &bytesRead, NULL) || bytesRead != WOZ2_HEADER_SIZE) {
+      VirtualFree(ptr->header, 0, 0);
+      ptr->header = NULL;
+      return;
+    }
   }
 
   uint8_t* tmap = ptr->header + WOZ2_TMAP_OFFSET;
   uint8_t* trks = ptr->header + WOZ2_TRKS_OFFSET;
-  uint8_t* trk = NULL;
 
-  // Sorry, only integral tracks supported.
-  // This is because the Disk II emulation does not properly handle
-  // track data for half-/quarter- tracks.
-  const unsigned int tmap_index = 4 * track;
-  assert(tmap_index <= WOZ2_TMAP_SIZE);
+  // Disk.cpp passes the stepper phase (0..69), where each phase step is a
+  // half-track. WOZ TMAP has two entries per half-track position.
+  if (quartertrack < 0) {
+    return;
+  }
+  const unsigned int tmap_index = 2U * (unsigned int)quartertrack;
+  if (tmap_index >= WOZ2_TMAP_SIZE) {
+    return;
+  }
 
   const unsigned int trks_index = tmap[tmap_index];
 
@@ -715,26 +926,45 @@ void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBu
     return;
   }
 
-  assert(trks_index <= WOZ2_TRKS_MAX_SIZE);
-  trk = trks + trks_index * WOZ2_TRK_SIZE;
+  if (trks_index >= WOZ2_TRKS_MAX_SIZE) {
+    return;
+  }
+
+  uint8_t* trk = trks + trks_index * WOZ2_TRK_SIZE;
 
   const uint16_t starting_block = trk[0] | ((uint16_t) trk[1])<<8;
   const uint16_t block_count = trk[2] | ((uint16_t) trk[3])<<8;
   const uint32_t bit_count =  trk[4] | ((uint16_t) trk[5])<<8
     | ((uint16_t) trk[6])<<16 | ((uint16_t) trk[7])<<24;
 
-  SetFilePointer(ptr->file, ptr->offset + starting_block * WOZ2_DATA_BLOCK_SIZE, NULL, FILE_BEGIN);
-
   const unsigned int byte_count = block_count * WOZ2_DATA_BLOCK_SIZE;
-  LPBYTE buffer = (LPBYTE) VirtualAlloc(NULL, byte_count, 0x1000, 0);
-  if (!buffer) {
-    *nibbles = 0;
+
+  const unsigned int file_size = GetFileSize(ptr->file, NULL);
+  const unsigned int data_offset =
+      ptr->offset + starting_block * WOZ2_DATA_BLOCK_SIZE;
+
+  // WOZ2 track data follows the three header blocks. Reject invalid
+  // metadata before seeking, allocating, or scanning the track buffer.
+  if (starting_block < 3 ||
+      block_count == 0 ||
+      bit_count == 0 ||
+      bit_count > byte_count * 8U ||
+      data_offset > file_size ||
+      byte_count > file_size - data_offset) {
     return;
   }
 
-  ReadFile(ptr->file, buffer, byte_count, &bytesRead, NULL);
-  assert(bytesRead == byte_count);
+  SetFilePointer(ptr->file, data_offset, NULL, FILE_BEGIN);
 
+  LPBYTE buffer = (LPBYTE) VirtualAlloc(NULL, byte_count, 0x1000, 0);
+  if (!buffer) {
+    return;
+  }
+
+  if (!ReadFile(ptr->file, buffer, byte_count, &bytesRead, NULL) || bytesRead != byte_count) {
+    VirtualFree(buffer, 0, 0);
+    return;
+  }
 
   // scan for sync bytes
   // try 16-sector format first...
@@ -747,8 +977,8 @@ void Woz2Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBu
                              1);
   }
   if (i == 0) { // sync bytes (still) not found
+    *nibbles = WozPackRawBits(buffer, bit_count, trackImageBuffer);
     VirtualFree(buffer, 0,/*MEM_RELEASE*/0);
-    *nibbles = 0;
     return;
   }
 
