@@ -1020,6 +1020,7 @@ void PrintHelp()
          "  --d1 <file>    insert disk image into first drive\n"
          "  --d2 <file>    insert disk image into second drive\n"
          "  --hd1 <file>   mount hard disk image as first HDD\n"
+         "  --hd2 <file>   mount hard disk image as second HDD\n"
          "  --ser <file>   serial port to use and map on slot2\n"
          "  -b|--autoboot  boot/reset at startup\n"
          "  -f             run fullscreen\n"
@@ -1043,6 +1044,7 @@ int main(int argc, char *argv[])
   LPSTR szImageName_drive1 = NULL;
   LPSTR szImageName_drive2 = NULL;
   LPSTR szImageName_hd1 = NULL;
+  LPSTR szImageName_hd2 = NULL;
   LPSTR szSnapshotFile = NULL;
 // colinleroy - Basic fix for serial emulation
   LPSTR szSerialFile = NULL;
@@ -1056,6 +1058,7 @@ int main(int argc, char *argv[])
                                      {"d1",       required_argument, 0, 0},
                                      {"d2",       required_argument, 0, 0},
                                      {"hd1",      required_argument, 0, 0},
+                                     {"hd2",      required_argument, 0, 0},
                                      {"ser",      required_argument, 0, 0},
                                      {"help",     0,                 0, 0},
                                      {"state",    required_argument, 0, 0},
@@ -1121,6 +1124,8 @@ int main(int argc, char *argv[])
           szImageName_drive2 = optarg;
         } else if (!strcmp(optname, "hd1")) {
           szImageName_hd1 = optarg;
+        } else if (!strcmp(optname, "hd2")) {
+          szImageName_hd2 = optarg;
         } else if (!strcmp(optname, "help")) {
           PrintHelp();
           return 0;
@@ -1155,9 +1160,9 @@ int main(int argc, char *argv[])
     const char *filename = argv[optind];
 
     // Do not silently override an explicitly selected drive or HDD image.
-    if (szImageName_drive1 || szImageName_drive2 || szImageName_hd1) {
+    if (szImageName_drive1 || szImageName_drive2 || szImageName_hd1 || szImageName_hd2) {
       fprintf(stderr, "Error: disk image '%s' cannot be combined "
-                      "with --d1, --d2, or --hd1.\n", filename);
+                      "with --d1, --d2, --hd1, or --hd2.\n", filename);
       return 255;
     }
 
@@ -1283,6 +1288,15 @@ int main(int argc, char *argv[])
     if (szImageName_hd1) {
       if (!HD_InsertDisk2(0, szImageName_hd1)) {
         LOG("Failed to mount %s as hard disk image.", szImageName_hd1);
+        break;
+      }
+      hddenabled = true;
+    }
+
+    // Mount a hard disk as the second HDD
+    if (szImageName_hd2) {
+      if (!HD_InsertDisk2(1, szImageName_hd2)) {
+        LOG("Failed to mount %s as second hard disk image.", szImageName_hd2);
         break;
       }
       hddenabled = true;
