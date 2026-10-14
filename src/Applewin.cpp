@@ -1161,8 +1161,8 @@ int main(int argc, char *argv[])
 
     // Do not silently override an explicitly selected drive or HDD image.
     if (szImageName_drive1 || szImageName_drive2 || szImageName_hd1 || szImageName_hd2) {
-      fprintf(stderr, "Error: disk image '%s' cannot be combined "
-                      "with --d1, --d2, --hd1, or --hd2.\n", filename);
+      fprintf(stderr, "Error: quick loading cannot be combined "
+                      "with --d1, --d2, --hd1, or --hd2.\n");
       return 255;
     }
 
