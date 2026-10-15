@@ -1176,8 +1176,8 @@ int main(int argc, char *argv[])
     for (std::string::size_type i = 0; i < extension.size(); ++i)
       extension[i] = (char)tolower((unsigned char)extension[i]);
 
-    // These extensions can describe either floppy or hard disk images,
-    // or contain archives whose contents cannot be inferred here.
+    // These extensions can describe either floppy or hard disk images.
+    // ZIP and GZ archives use the existing floppy-image loading path.
     if (extension == ".po"   ||
         extension == ".2mg"  ||
         extension == ".2img" ||
@@ -1196,11 +1196,13 @@ int main(int argc, char *argv[])
                extension == ".do"  ||
                extension == ".bin" ||
                extension == ".nib" ||
-               extension == ".woz") {
+               extension == ".woz" ||
+               extension == ".zip" ||
+               extension == ".gz") {
       szImageName_drive1 = (LPSTR)filename;
     } else {
       fprintf(stderr, "Error: unsupported disk image or file not found: '%s'.\n", filename);
-      fprintf(stderr, "Supported quick floppy extensions: .dsk, .do, .bin, .nib, .woz\n");
+      fprintf(stderr, "Supported quick floppy extensions: .dsk, .do, .bin, .nib, .woz, .zip, .gz\n");
       fprintf(stderr, "Supported quick hard disk extension: .hdv\n");
       return 255;
     }
