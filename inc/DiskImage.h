@@ -1,8 +1,15 @@
 #pragma once
 
-#define  TRACKS      35
+#define  NIBBLES                6656
+#define  NIBBLES_PER_TRACK      0x1A00
+#define  TRACK_DENIBBLIZED_SIZE (16 * 256)  // #Sectors x Sector-size
+
+#define  TRACKS       35  // Standard 35 track count
+#define	 TRACKS_EXTRA 5		// Allow up to a 40-track .dsk image (160KB)
+#define	 TRACKS_MAX   (TRACKS+TRACKS_EXTRA)
+
 #define  IMAGETYPES  8
-#define  NIBBLES     6656
+
 #define  WOZ2_HEADER_SIZE     1536 /* three 512-byte blocks */
 #define  WOZ2_DATA_BLOCK_SIZE  512
 #define  WOZ2_TMAP_OFFSET       88 /* bytes from beginning of WOZ2 file */

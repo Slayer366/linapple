@@ -41,6 +41,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 typedef struct _imageinforec {
   char filename[MAX_PATH];
   unsigned int format;
+  unsigned char volume;
   HANDLE file;
   unsigned int offset;
   bool writeProtected;
@@ -309,7 +310,7 @@ void DenibblizeTrack(LPBYTE trackimage, bool dosorder, int nibbles)
   }
 }
 
-unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
+unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track, unsigned char volume = 0xFE)
 {
   memset(workbuffer + 4096, 0, 4096);
   LPBYTE imageptr = trackImageBuffer;
@@ -333,17 +334,16 @@ unsigned int NibblizeTrack(LPBYTE trackImageBuffer, bool dosorder, int track)
     *(imageptr++) = 0xD5;
     *(imageptr++) = 0xAA;
     *(imageptr++) = 0x96;
-    #define VOLUME 0xFE
     #define CODE44A(a) ((((a) >> 1) & 0x55) | 0xAA)
     #define CODE44B(a) (((a) & 0x55) | 0xAA)
-    *(imageptr++) = CODE44A(VOLUME);
-    *(imageptr++) = CODE44B(VOLUME);
+    *(imageptr++) = CODE44A(volume);
+    *(imageptr++) = CODE44B(volume);
     *(imageptr++) = CODE44A((unsigned char) track);
     *(imageptr++) = CODE44B((unsigned char) track);
     *(imageptr++) = CODE44A(sector);
     *(imageptr++) = CODE44B(sector);
-    *(imageptr++) = CODE44A(VOLUME ^ ((unsigned char) track) ^ sector);
-    *(imageptr++) = CODE44B(VOLUME ^ ((unsigned char) track) ^ sector);
+    *(imageptr++) = CODE44A(volume ^ ((unsigned char) track) ^ sector);
+    *(imageptr++) = CODE44B(volume ^ ((unsigned char) track) ^ sector);
     #undef CODE44A
     #undef CODE44B
     *(imageptr++) = 0xDE;
@@ -454,7 +454,7 @@ void DoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuff
   memset(workbuffer, 0, 4096);
   unsigned int bytesRead;
   ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
-  *nibbles = NibblizeTrack(trackImageBuffer, 1, track);
+  *nibbles = NibblizeTrack(trackImageBuffer, 1, track, ptr->volume);
   if (!enhancedisk) {
     SkewTrack(track, *nibbles, trackImageBuffer);
   }
@@ -518,7 +518,7 @@ void IieRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuf
     memset(workbuffer, 0, 4096);
     unsigned int bytesRead;
     ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
-    *nibbles = NibblizeTrack(trackImageBuffer, 2, track);
+    *nibbles = NibblizeTrack(trackImageBuffer, 2, track, ptr->volume);
   } else {
     // Otherwise, if this image contains nibble information, read it directly into the track buffer
     *nibbles = *(LPWORD)(ptr->header + (track << 1) + 14);
@@ -622,7 +622,7 @@ void PoRead(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBuff
   memset(workbuffer, 0, 4096);
   unsigned int bytesRead;
   ReadFile(ptr->file, workbuffer, 4096, &bytesRead, NULL);
-  *nibbles = NibblizeTrack(trackImageBuffer, 0, track);
+  *nibbles = NibblizeTrack(trackImageBuffer, 0, track, ptr->volume);
   if (!enhancedisk) {
     SkewTrack(track, *nibbles, trackImageBuffer);
   }
@@ -1174,6 +1174,9 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
 
   const unsigned int UNKNOWN_FORMAT = 0xFFFFFFFF;
   unsigned int format = UNKNOWN_FORMAT;
+  unsigned char imageVolume = 0xFE;
+  bool imageLocked = false;
+  bool is2MG = false;
 
   if (size > 0) {
     view = (LPBYTE) malloc(size);
@@ -1184,6 +1187,102 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
     pImage = view;
 
     if (pImage) {
+      // Determine whether the file is a 2MG container before probing raw
+      // image formats. 2MG fields are little-endian and the disk payload
+      // may not begin at byte 64.
+      const bool has2MGSignature = size >= 4 && memcmp(pImage, "2IMG", 4) == 0;
+
+      if (has2MGSignature && size >= 64) {
+        const auto readLE16 = [](const LPBYTE p) -> unsigned int {
+          return (unsigned int)p[0] | ((unsigned int)p[1] << 8);
+        };
+
+        const auto readLE32 = [](const LPBYTE p) -> unsigned int {
+          return (unsigned int)p[0] |
+                 ((unsigned int)p[1] << 8) |
+                 ((unsigned int)p[2] << 16) |
+                 ((unsigned int)p[3] << 24);
+        };
+
+        const unsigned int headerSize = readLE16(pImage + 8);
+        const unsigned int version = readLE16(pImage + 10);
+        const unsigned int imageFormat = readLE32(pImage + 12);
+        const unsigned int flags = readLE32(pImage + 16);
+        const unsigned int numBlocks = readLE32(pImage + 20);
+        const unsigned int dataOffset = readLE32(pImage + 24);
+        unsigned int dataLength = readLE32(pImage + 28);
+
+        // 64-byte 2MG header - version 1.
+        if (headerSize == 64 && version == 1 &&
+            dataOffset >= headerSize && dataOffset <= size) {
+
+          // AppleWin's DOS volume number is valid only when bit 8 is set.
+          // The low byte contains the DOS volume number.
+          if (imageFormat == 0 && (flags & 0x00000100u)) {
+            imageVolume = (unsigned char)(flags & 0xFFu);
+          }
+
+          // Bit 31 marks a locked disk image.
+          imageLocked = (flags & 0x80000000u) != 0;
+
+          // Some ProDOS 2MG images leave DiskDataLength unset and use NumBlocks instead.
+          if (dataLength == 0 && imageFormat == 1 && numBlocks <= (0xFFFFFFFFu / 512u)) {
+            dataLength = numBlocks * 512u;
+          }
+
+          if (dataLength > 0 && dataLength <= size - dataOffset) {
+            unsigned int payloadFormat = UNKNOWN_FORMAT;
+
+            switch (imageFormat) {
+              case 0:
+                payloadFormat = 1; // DOS 3.3 sector order (.do/.dsk)
+                break;
+              case 1:
+                payloadFormat = 2; // ProDOS sector order (.po)
+                break;
+              case 2:
+                payloadFormat = 4; // Nibblized tracks (.nib)
+                break;
+              default:
+                break;
+            }
+
+            const unsigned int minSectorImage = TRACKS * 4096u;
+            const unsigned int minNibImage = TRACKS * NIBBLES;
+
+            bool validPayload = false;
+
+            if (imageFormat == 2) {
+              // Standard 35-track nibble image
+              validPayload = dataLength == minNibImage;
+            } else if (imageFormat == 0 || imageFormat == 1) {
+              // Sector images must contain complete 4096-byte tracks.
+              // Do not accept payloads beyond LinApple's supported tracks.
+              validPayload =
+                  dataLength >= minSectorImage &&
+                  (dataLength % 4096u) == 0 &&
+                  dataLength <= TRACKS_MAX * 4096u;
+            }
+
+            if (payloadFormat != UNKNOWN_FORMAT && validPayload) {
+              format = payloadFormat;
+              pImage = view + dataOffset;
+              size = dataLength;
+              is2MG = true;
+            }
+          }
+        }
+
+        // Never mistake an invalid or unsupported 2MG container for a raw disk image.
+        if (!is2MG) {
+          format = UNKNOWN_FORMAT;
+          size = 0;
+        }
+      } else if (has2MGSignature) {
+        // A truncated 2MG header is invalid.
+        size = 0;
+      }
+
       // Determine whether the file has a 128-byte macbinary header
       if ((size > 128) && (!*pImage) && (*(pImage + 1) < 120) && (!*(pImage + *(pImage + 1) + 2)) &&
           (*(pImage + 0x7A) == 0x81) && (*(pImage + 0x7B) == 0x81)) {
@@ -1194,7 +1293,7 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
       // Call the detection functions in order, looking for a match
       unsigned int possibleformat = UNKNOWN_FORMAT;
       int loop = 0;
-      while ((loop < IMAGETYPES) && (format == UNKNOWN_FORMAT)) {
+      while ((!has2MGSignature) && (loop < IMAGETYPES) && (format == UNKNOWN_FORMAT)) {
         if (*ext && _tcsstr(imagetype[loop].rejectExts, ext)) {
           ++loop;
         } else {
@@ -1239,9 +1338,10 @@ int ImageOpen(LPCTSTR imagefilename, HIMAGE *hDiskImage_, bool *pWriteProtected_
 #pragma GCC diagnostic pop
       ((imageinfoptr) *hDiskImage_)->format = format;
       ((imageinfoptr) *hDiskImage_)->file = file;
-//      ((imageinfoptr) *hDiskImage_)->offset = pImage - view;
       ((imageinfoptr)*hDiskImage_)->offset = imageOffset;
-      ((imageinfoptr) *hDiskImage_)->writeProtected = *pWriteProtected_;
+      ((imageinfoptr) *hDiskImage_)->volume = imageVolume;
+      if (imageLocked) { *pWriteProtected_ = true; }
+      ((imageinfoptr) *hDiskImage_)->writeProtected = *pWriteProtected_ || imageLocked;
 
       for (int track = 0; track < TRACKS; track++) {
         ((imageinfoptr) *hDiskImage_)->validTrack[track] = (size > 0);
