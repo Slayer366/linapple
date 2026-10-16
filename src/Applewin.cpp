@@ -283,7 +283,7 @@ void ContinueExecution()
     #endif
   }
 #ifdef SDL2
-  if (video_frame_ready) {
+  if ((video_frame_ready) && (!g_singlethreaded)) {
     SDL_UpdateWindowSurface(sdl2window);
     video_frame_ready = false;
   }
@@ -1180,9 +1180,7 @@ int main(int argc, char *argv[])
     // ZIP and GZ archives use the existing floppy-image loading path.
     if (extension == ".po"   ||
         extension == ".2mg"  ||
-        extension == ".2img" ||
-        extension == ".gz"   ||
-        extension == ".zip") {
+        extension == ".2img") {
       fprintf(stderr, "Error: cannot determine the disk type for '%s' "
                       "from its extension alone.\n", filename);
       fprintf(stderr, "Specify --d1 for a floppy disk or --hd1 "

@@ -2036,9 +2036,12 @@ video_frame_ready = false;
 #ifdef SDL2
     SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
 	//SDL_FillRect(sdl2surface, 0, SDL_MapRGB(sdl2surface->format, 255, 0, 0));
-	//The SDL2 window will get updated in ContinueExecution() instead
-  //SDL_UpdateWindowSurface(sdl2window);
+  if (g_singlethreaded) {
+    SDL_UpdateWindowSurface(sdl2window);
+  } else {
+	  //The SDL2 window will get updated in ContinueExecution() instead
     video_frame_ready = true;
+  }
 #else
     SDL_Flip(screen);  // flip SDL buffers
 #endif
@@ -2047,9 +2050,12 @@ video_frame_ready = false;
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
 #ifdef SDL2
+  if (g_singlethreaded) {
+    SDL_UpdateWindowSurfaceRects(sdl2window, &srect, 1);
+  } else {
     //The SDL2 window will get updated in ContinueExecution() instead
-    //SDL_UpdateWindowSurfaceRects(sdl2window, &srect, 1);
     video_frame_ready = true;
+  }
 #else
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
 #endif
@@ -2058,9 +2064,12 @@ video_frame_ready = false;
     OSK_Draw(screen);
 #ifdef SDL2
     SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
+  if (g_singlethreaded) {
+    SDL_UpdateWindowSurface(sdl2window);
+  } else {
     //The SDL2 window will get updated in ContinueExecution() instead
-    //SDL_UpdateWindowSurface(sdl2window);
     video_frame_ready = true;
+  }
 #else
     SDL_Flip(screen);
 #endif
@@ -2093,7 +2102,7 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
     // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
   }
-  if (bBenchMark) {
+  if ((bBenchMark) && (!g_singlethreaded)) {
     SDL_UpdateWindowSurface(sdl2window);
   }
 #else
