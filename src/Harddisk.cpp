@@ -133,6 +133,9 @@ typedef struct {
   unsigned short hd_buf_ptr;
   bool hd_imageloaded;
   HANDLE hd_file;
+  unsigned int hd_data_offset;
+  unsigned int hd_data_length; // zero for legacy raw images, which may grow
+  bool hd_read_only;
   unsigned char hd_buf[513];
 } HDD, *PHDD;
 
@@ -213,23 +216,91 @@ static void HD_CleanupDrive(int nDrive)
 {
   if (g_HardDrive[nDrive].hd_file) {
     CloseHandle(g_HardDrive[nDrive].hd_file);
+    g_HardDrive[nDrive].hd_file = NULL;
   }
   g_HardDrive[nDrive].hd_imageloaded = false;
+  g_HardDrive[nDrive].hd_data_offset = 0;
+  g_HardDrive[nDrive].hd_data_length = 0;
+  g_HardDrive[nDrive].hd_read_only = false;
   g_HardDrive[nDrive].hd_imagename[0] = 0;
   g_HardDrive[nDrive].hd_fullname[0] = 0;
 }
 
+static unsigned int ReadLE32(const unsigned char *p)
+{
+  return (unsigned int)p[0] | ((unsigned int)p[1] << 8) |
+         ((unsigned int)p[2] << 16) | ((unsigned int)p[3] << 24);
+}
+
+static unsigned int ReadLE16(const unsigned char *p)
+{
+  return (unsigned int)p[0] | ((unsigned int)p[1] << 8);
+}
+
 static bool HD_Load_Image(int nDrive, LPCSTR filename)
 {
-  g_HardDrive[nDrive].hd_file = fopen(filename, "r+b");
+//  g_HardDrive[nDrive].hd_file = fopen(filename, "r+b");
+  HDD *pHDD = &g_HardDrive[nDrive];
+  unsigned int dataOffset = 0;
+  unsigned int dataLength = 0;
+  bool readOnly = false;
+  unsigned char header[64];
+  FILE *probe = fopen(filename, "rb");
 
-  if (g_HardDrive[nDrive].hd_file == INVALID_HANDLE_VALUE) {
-    g_HardDrive[nDrive].hd_imageloaded = false;
-  } else {
-    g_HardDrive[nDrive].hd_imageloaded = true;
+//  if (g_HardDrive[nDrive].hd_file == INVALID_HANDLE_VALUE) {
+//    g_HardDrive[nDrive].hd_imageloaded = false;
+//  } else {
+//    g_HardDrive[nDrive].hd_imageloaded = true;
+//  }
+
+  if (!probe) {
+    return false;
   }
 
-  return g_HardDrive[nDrive].hd_imageloaded;
+  size_t headerBytes = fread(header, 1, sizeof(header), probe);
+  if (headerBytes >= 4 && memcmp(header, "2IMG", 4) == 0) {
+    // A hard-disk 2MG is a ProDOS-order block image. The block data begins
+    // at dataOffset; the 64-byte 2IMG header is not part of the disk.
+    if (headerBytes < sizeof(header) || ReadLE16(header + 8) < 64 ||
+        ReadLE16(header + 8) > GetFileSize((HANDLE)probe, NULL) ||
+        ReadLE32(header + 12) != 1) {
+      fclose(probe);
+      return false;
+    }
+
+    dataOffset = ReadLE32(header + 24);
+    dataLength = ReadLE32(header + 28);
+    if (dataOffset == 0)
+      dataOffset = ReadLE16(header + 8);
+
+    unsigned int fileSize = GetFileSize((HANDLE)probe, NULL);
+    unsigned int blockCount = ReadLE32(header + 20);
+    if (dataLength == 0 && blockCount != 0 && blockCount <= 0xFFFFFFFFu / 512u) {
+      dataLength = blockCount * 512u;
+    }
+    if (dataOffset < ReadLE16(header + 8) || dataOffset > fileSize || dataLength == 0 ||
+        dataLength > fileSize - dataOffset || (dataLength % 512) != 0 ||
+        (blockCount != 0 && blockCount > 0xFFFFFFFFu / 512u) ||
+        (blockCount != 0 && blockCount * 512u != dataLength)) {
+      fclose(probe);
+      return false;
+    }
+
+    readOnly = (ReadLE32(header + 16) & 0x80000000u) != 0;
+   }
+  fclose(probe);
+
+  pHDD->hd_file = fopen(filename, readOnly ? "rb" : "r+b");
+  if (!pHDD->hd_file) {
+    return false;
+  }
+
+//  return g_HardDrive[nDrive].hd_imageloaded;
+  pHDD->hd_data_offset = dataOffset;
+  pHDD->hd_data_length = dataLength;
+  pHDD->hd_read_only = readOnly;
+  pHDD->hd_imageloaded = true;
+  return true;
 }
 
 #if 0
@@ -486,7 +557,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
           switch (g_nHD_Command) {
             default:
             case 0x00: //status
-              if (GetFileSize(pHDD->hd_file, NULL) == 0) {
+              if (pHDD->hd_data_length == 0 && GetFileSize(pHDD->hd_file, NULL) == 0) {
                 pHDD->hd_error = 1;
                 r = DEVICE_IO_ERROR;
               }
@@ -495,8 +566,13 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             {
               HDDStatus = DISK_STATUS_READ;
               unsigned int br = GetFileSize(pHDD->hd_file, NULL);
-              if ((unsigned int)(pHDD->hd_diskblock * 512) <= br) { // seek to block
-                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
+//              if ((unsigned int)(pHDD->hd_diskblock * 512) <= br) { // seek to block
+//                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
+              unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
+              if ((pHDD->hd_data_length != 0 && blockOffset <= pHDD->hd_data_length &&
+                   pHDD->hd_data_length - blockOffset >= 512u) ||
+                  (pHDD->hd_data_length == 0 && blockOffset <= br && br - blockOffset >= 512u)) {
+                SetFilePointer(pHDD->hd_file, (int)(pHDD->hd_data_offset + blockOffset), NULL, FILE_BEGIN);
                 if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL)) { // read block into buffer
                   pHDD->hd_error = 0;
                   r = 0;
@@ -515,26 +591,44 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             {
               HDDStatus = DISK_STATUS_WRITE;
               unsigned int bw = GetFileSize(pHDD->hd_file, NULL);
-              if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
+//              if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
+              unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
+
+              // 2MG lock bit and filesystem-level read-only mounts are honored.
+              if (pHDD->hd_read_only ||
+                  (pHDD->hd_data_length != 0 &&
+                   (blockOffset > pHDD->hd_data_length || pHDD->hd_data_length - blockOffset < 512u))) {
+                pHDD->hd_error = 1;
+                r = DEVICE_IO_ERROR;
+              } else if ((pHDD->hd_data_length != 0 &&
+                          blockOffset <= pHDD->hd_data_length && pHDD->hd_data_length - blockOffset >= 512u) ||
+                         (pHDD->hd_data_length == 0 && blockOffset <= bw && bw - blockOffset >= 512u)) {
                 memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
+//                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
+//                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
+                SetFilePointer(pHDD->hd_file, (int)(pHDD->hd_data_offset + blockOffset), NULL, FILE_BEGIN);
+                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) {
                   pHDD->hd_error = 0;
                   r = 0;
                 } else {
                   pHDD->hd_error = 1;
                   r = DEVICE_IO_ERROR;
                 }
-              } else {
+              } else if (pHDD->hd_data_length == 0) {
+                // Legacy raw .hdv images may grow on demand; wrapped 2MG images may not.
                 unsigned int fsize = SetFilePointer(pHDD->hd_file, 0, NULL, FILE_END);
                 unsigned int addblocks = pHDD->hd_diskblock - (fsize / 512);
                 memset(pHDD->hd_buf, 0, 512);
                 while (addblocks--) {
-                  unsigned int bw;
-                  WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
+//                  unsigned int bw;
+//                  WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
+                  unsigned int bytesWritten;
+                  if (!WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bytesWritten, NULL))
+                    break;
                 }
-                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
+//                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
                   // seek to block
+                if (SetFilePointer(pHDD->hd_file, (int)blockOffset, NULL, FILE_BEGIN) != 0xFFFFFFFFu) {
                   memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
                   if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
                     pHDD->hd_error = 0;
@@ -543,7 +637,13 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
                     pHDD->hd_error = 1;
                     r = DEVICE_IO_ERROR;
                   }
+                } else {
+                  pHDD->hd_error = 1;
+                  r = DEVICE_IO_ERROR;
                 }
+              } else {
+                pHDD->hd_error = 1;
+                r = DEVICE_IO_ERROR;
               }
             }
               break;
@@ -576,7 +676,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
       }
         break;
       case 0xF5: {
-        r = (unsigned char)(pHDD->hd_memblock & 0xFF00 >> 8);
+        r = (unsigned char)((pHDD->hd_memblock & 0xFF00) >> 8);
       }
         break;
       case 0xF6: {
@@ -584,7 +684,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
       }
         break;
       case 0xF7: {
-        r = (unsigned char)(pHDD->hd_diskblock & 0xFF00 >> 8);
+        r = (unsigned char)((pHDD->hd_diskblock & 0xFF00) >> 8);
       }
         break;
       case 0xF8: {
