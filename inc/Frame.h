@@ -17,6 +17,8 @@ enum {
 #ifdef SDL2
 extern SDL_Window *sdl2window;
 extern SDL_Surface *sdl2surface;
+void FramePresentGL(SDL_Surface *frame);
+void FrameShutdownGL(void);
 #endif
 
 extern SDL_Surface *screen;

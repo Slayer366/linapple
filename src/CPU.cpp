@@ -3585,6 +3585,10 @@ ULONG CpuGetCyclesThisFrame(ULONG nExecutedCycles)
 
 #endif
 
+/* uncomment this and below to measure emulation speed
+static uint64_t g_SpeedCycles = 0;
+static uint32_t g_SpeedLastTicks = 0;
+*/
 DWORD CpuExecute(DWORD uCycles)
 {
   DWORD uExecutedCycles = 0;
@@ -3599,6 +3603,21 @@ DWORD CpuExecute(DWORD uCycles)
   } else {        // Do multi-opcode emulation
     uExecutedCycles = InternalCpuExecute(uCycles);
   }
+
+/* uncomment this and above to measure emulation speed
+  // Diagnostic: measure actual Apple II CPU emulation throughput.
+  g_SpeedCycles += uExecutedCycles;
+  uint32_t now = SDL_GetTicks();
+  if (g_SpeedLastTicks == 0)
+    g_SpeedLastTicks = now;
+  else if (now - g_SpeedLastTicks >= 1000) {
+    double speed = (double)g_SpeedCycles / 1023000.0 * 100.0;
+    printf("Emulation speed: %.1f%% (%llu cycles/sec)\n",
+           speed, (unsigned long long)g_SpeedCycles);
+    g_SpeedCycles = 0;
+    g_SpeedLastTicks = now;
+  }
+*/
 
   #ifndef UPDATE_ALL_PER_CYCLE
   MB_UpdateCycles(uExecutedCycles);  // Update 6522s (NB. Do this before updating g_nCumulativeCycles below)

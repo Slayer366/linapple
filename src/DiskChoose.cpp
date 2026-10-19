@@ -229,21 +229,16 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     if (tempSurface == NULL) {
       tempSurface = screen;  // use screen, if none available
     }
-#ifdef SDL2
-//	SDL_FillRect(tempSurface, 0, SDL_MapRGB(tempSurface->format, 255, 0, 255)); // add by trngaje
-#endif
 
 #ifdef SDL2
-  // Copy the current contents of our sdl2surface to generate a dimmed background.
-  // It seems that something clears the screen in this SDL2 path
   if (my_screen == NULL) {
-    my_screen = SDL_ConvertSurface(screen, screen->format, 0);
+    my_screen = SDL_ConvertSurface(tempSurface, screen->format, 0);
     //SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
     if (my_screen == NULL) {
       pthread_mutex_unlock(&video_draw_mutex);
       return false;
     }
-    SDL_BlitScaled(sdl2surface, NULL, my_screen, NULL);
+    SDL_BlitScaled(screen, NULL, my_screen, NULL);
     surfacefade32(my_screen, 0.2F);
   }
   SDL_BlitScaled(my_screen, NULL, screen, NULL);    // show background
@@ -265,8 +260,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
     font_print_centered(sx / 2, 20 * facy, file_list_generator->get_starting_message().c_str(), screen, 1 * facx, 1 * facy);
 
 #ifdef SDL2
-    SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-    SDL_UpdateWindowSurface(sdl2window);
+    FramePresentGL(screen);
 #else
     SDL_Flip(screen);  // show the screen
 #endif
@@ -278,8 +272,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
 
     font_print_centered(sx / 2, 30 * facy, "Failure. Press any key!", screen, 1.4 * facx, 1.1 * facy);
 #ifdef SDL2
-    SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-    SDL_UpdateWindowSurface(sdl2window);
+    FramePresentGL(screen);
 #else
     SDL_Flip(screen);  // show the screen
 #endif
@@ -375,8 +368,7 @@ bool ChooseImageDialog(int sx, int sy, const string& dir, int slot, file_list_ge
       rectangle(screen, 480 * facx, TOPX - 5, 0, 320 * facy, SDL_MapRGB(screen->format, 255, 255, 255));
 
 #ifdef SDL2
-      SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-      SDL_UpdateWindowSurface(sdl2window);
+      FramePresentGL(screen);
 #else
       SDL_Flip(screen);  // show the screen
 #endif

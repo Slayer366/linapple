@@ -177,10 +177,6 @@ int g_iStatusCycle = 0;    // cycler for status panel showing
 SDL_Surface *g_origscreen = NULL;
 SDL_Surface *g_hSourceBitmap = NULL;
 
-#ifdef SDL2
-bool video_frame_ready = false;
-#endif
-
 static LPBYTE g_pSourcePixels;
 SDL_Color g_pSourceHeader[256];
 const int MAX_SOURCE_Y = 512*2; // double size: second half of bitmap may contain a complete copy with an alternate language
@@ -1709,10 +1705,10 @@ void VideoDestroy() {
   screen = NULL;
 
   if (sdl2window) {
+    FrameShutdownGL();
     SDL_DestroyWindow(sdl2window);
   }
   sdl2window = NULL;
-  sdl2surface = NULL;
 #endif
 
   if (charset40) {
@@ -1744,9 +1740,8 @@ void VideoDisplayLogo() {
   SDL_SoftStretch(g_hLogoBitmap, &srect, screen, &drect);
   SDL_SoftStretch(g_hLogoBitmap, &srect, g_origscreen, &drect);
 #ifdef SDL2
-  SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-  //SDL_FillRect(sdl2surface, 0, SDL_MapRGB(sdl2surface->format, 0, 255, 0));
-  SDL_UpdateWindowSurface(sdl2window);
+  //SDL_FillRect(screen, 0, SDL_MapRGB(screen->format, 0, 255, 0));
+  FramePresentGL(screen);
 #else
   SDL_Flip(screen);
 #endif
@@ -1870,9 +1865,6 @@ void VideoRedrawScreen() {
 }
 
 void VideoPerformRefresh() {
-#ifdef SDL2
-video_frame_ready = false;
-#endif
 
   // Claim until video refresh is complete
   pthread_mutex_lock(&video_draw_mutex);
@@ -2034,14 +2026,8 @@ video_frame_ready = false;
       OSK_Draw(screen);
     }
 #ifdef SDL2
-    SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-	//SDL_FillRect(sdl2surface, 0, SDL_MapRGB(sdl2surface->format, 255, 0, 0));
-  if (g_singlethreaded) {
-    SDL_UpdateWindowSurface(sdl2window);
-  } else {
-	  //The SDL2 window will get updated in ContinueExecution() instead
-    video_frame_ready = true;
-  }
+    //SDL_FillRect(screen, 0, SDL_MapRGB(screen->format, 255, 0, 0));
+    FramePresentGL(screen);
 #else
     SDL_Flip(screen);  // flip SDL buffers
 #endif
@@ -2050,27 +2036,25 @@ video_frame_ready = false;
       SDL_BlitSurface(g_hStatusSurface, NULL, screen, &srect);
     }
 #ifdef SDL2
-  if (g_singlethreaded) {
-    SDL_UpdateWindowSurfaceRects(sdl2window, &srect, 1);
-  } else {
-    //The SDL2 window will get updated in ContinueExecution() instead
-    video_frame_ready = true;
-  }
+    //FramePresentGL(screen);
 #else
     SDL_UpdateRect(screen, srect.x, srect.y, STATUS_PANEL_W, STATUS_PANEL_H);
 #endif
   }
   if (OSK_IsVisible() && !anydirty && !bStatusShow) {
-    OSK_Draw(screen);
 #ifdef SDL2
-    SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-  if (g_singlethreaded) {
-    SDL_UpdateWindowSurface(sdl2window);
-  } else {
-    //The SDL2 window will get updated in ContinueExecution() instead
-    video_frame_ready = true;
-  }
+    // restore the Apple II display to alleviate flickering
+    if (!g_WindowResized) {
+      SDL_BlitSurface(g_hDeviceBitmap, NULL, screen, NULL);
+    } else {
+      SDL_SoftStretch(g_hDeviceBitmap, &origRect, g_origscreen, &newRect);
+      SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
+    }
+
+    OSK_Draw(screen);
+    FramePresentGL(screen);
 #else
+    OSK_Draw(screen);
     SDL_Flip(screen);
 #endif
   }
@@ -2095,24 +2079,12 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
     redrawfull = 1;
   }
 
-#ifdef SDL2
   if (video_worker_active_) {
     video_worker_refresh_ = true;
   } else {
     // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
   }
-  if ((bBenchMark) && (!g_singlethreaded)) {
-    SDL_UpdateWindowSurface(sdl2window);
-  }
-#else
-  if (video_worker_active_) {
-    video_worker_refresh_ = true;
-  } else {
-    // If singlethreaded just call the refresh here.
-    VideoPerformRefresh();
-  }
-#endif
 }
 
 void VideoResetState() {

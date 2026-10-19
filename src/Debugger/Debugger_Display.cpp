@@ -291,8 +291,7 @@ void StretchBltMemToFrameDC(void)
 	SDL_SoftStretch(g_hDebugScreen, &srect, g_origscreen, &drect);
 	SDL_BlitSurface(g_origscreen, NULL, screen, NULL);
 #ifdef SDL2
-  SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-  SDL_UpdateWindowSurface(sdl2window);
+  FramePresentGL(screen);
 #else
   SDL_Flip(screen);
 #endif

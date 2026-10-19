@@ -282,12 +282,6 @@ void ContinueExecution()
     }
     #endif
   }
-#ifdef SDL2
-  if ((video_frame_ready) && (!g_singlethreaded)) {
-    SDL_UpdateWindowSurface(sdl2window);
-    video_frame_ready = false;
-  }
-#endif
 }
 
 void SingleStep(bool bReinit)
@@ -1032,14 +1026,12 @@ void PrintHelp()
          "\n");
 }
 
-bool bBenchMark = false;
-
 int main(int argc, char *argv[])
 {
   bool bLog = false;
   bool bSetFullScreen = false;
   bool bBoot = false;
-//  bool bBenchMark = false;
+  bool bBenchMark = false;
   LPSTR szConfigurationFile = NULL;
   LPSTR szImageName_drive1 = NULL;
   LPSTR szImageName_drive2 = NULL;

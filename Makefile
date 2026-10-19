@@ -86,7 +86,7 @@ CFLAGS += $(CURL_CFLAGS)
 CFLAGS += -Wno-write-strings
 
 ifdef SDL2
-LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread
+LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lGLESv2 -pthread
 else
 LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread -lX11
 endif

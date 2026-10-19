@@ -511,7 +511,7 @@ int DiskInsert(int drive, LPCTSTR imageFileName, bool writeProtected, bool creat
     snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(tmp)), tmp);
     if (drive == 0) {
 #ifdef SDL2
-      // TODO: Caption for drive 0
+      //SDL_SetWindowTitle(sdl2window, s_title);
 #else
       SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
 #endif
@@ -840,7 +840,7 @@ bool DiskDriveSwap()
   // change title
   snprintf(s_title, MAX_DISK_IMAGE_NAME + 32, "%.*s - %.*s", int(strlen(g_pAppTitle)), g_pAppTitle, int(strlen(g_aFloppyDisk[0].imagename)), g_aFloppyDisk[0].imagename);
 #ifdef SDL2
-  // TODO: Caption for drive 0
+  //SDL_SetWindowTitle(sdl2window, s_title);
 #else
   SDL_WM_SetCaption(s_title, g_pAppTitle);// change caption just for drive 0 (leading)
 #endif

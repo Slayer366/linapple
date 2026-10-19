@@ -35,8 +35,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #include <sys/stat.h>
 // for usleep
 #include <unistd.h>
+
+#ifdef SDL2
+#include <SDL2/SDL_opengles2.h>
 // for embedded XPMs
-#include <SDL_image.h>
+#include <SDL2/SDL_image.h>
+#else
+// for embedded XPMs
+#include <SDL/SDL_image.h>
+#endif
 
 #include "stdafx.h"
 #include "asset.h"
@@ -49,7 +56,404 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 #ifdef SDL2
 SDL_Window *sdl2window;
-SDL_Surface *sdl2surface;
+
+static SDL_GLContext sdl2glcontext = NULL;
+static GLuint gles_program = 0;
+
+static GLuint gles_textures[2] = { 0, 0 };
+static int gles_texture_width[2] = { 0, 0 };
+static int gles_texture_height[2] = { 0, 0 };
+static unsigned int gles_texture_index = 0;
+
+static GLint gles_position = -1;
+static GLint gles_texcoord = -1;
+static GLint gles_sampler = -1;
+
+// Resolve GLES entry points through SDL so they belong to the active
+// SDL-created KMSDRM/EGL context, rather than the directly linked
+// GLES library variant.
+static PFNGLCREATESHADERPROC p_glCreateShader = NULL;
+static PFNGLSHADERSOURCEPROC p_glShaderSource = NULL;
+static PFNGLCOMPILESHADERPROC p_glCompileShader = NULL;
+static PFNGLGETSHADERIVPROC p_glGetShaderiv = NULL;
+static PFNGLGETSHADERINFOLOGPROC p_glGetShaderInfoLog = NULL;
+static PFNGLGETERRORPROC p_glGetError = NULL;
+static PFNGLDELETESHADERPROC p_glDeleteShader = NULL;
+static PFNGLCREATEPROGRAMPROC p_glCreateProgram = NULL;
+static PFNGLATTACHSHADERPROC p_glAttachShader = NULL;
+static PFNGLBINDATTRIBLOCATIONPROC p_glBindAttribLocation = NULL;
+static PFNGLLINKPROGRAMPROC p_glLinkProgram = NULL;
+static PFNGLDELETEPROGRAMPROC p_glDeleteProgram = NULL;
+static PFNGLGETPROGRAMIVPROC p_glGetProgramiv = NULL;
+static PFNGLGETPROGRAMINFOLOGPROC p_glGetProgramInfoLog = NULL;
+static PFNGLGETATTRIBLOCATIONPROC p_glGetAttribLocation = NULL;
+static PFNGLGETUNIFORMLOCATIONPROC p_glGetUniformLocation = NULL;
+static PFNGLGENTEXTURESPROC p_glGenTextures = NULL;
+static PFNGLBINDTEXTUREPROC p_glBindTexture = NULL;
+static PFNGLTEXPARAMETERIPROC p_glTexParameteri = NULL;
+static PFNGLPIXELSTOREIPROC p_glPixelStorei = NULL;
+static PFNGLDISABLEPROC p_glDisable = NULL;
+static PFNGLGETSTRINGPROC p_glGetString = NULL;
+static PFNGLVIEWPORTPROC p_glViewport = NULL;
+static PFNGLCLEARCOLORPROC p_glClearColor = NULL;
+static PFNGLCLEARPROC p_glClear = NULL;
+static PFNGLACTIVETEXTUREPROC p_glActiveTexture = NULL;
+static PFNGLTEXIMAGE2DPROC p_glTexImage2D = NULL;
+static PFNGLTEXSUBIMAGE2DPROC p_glTexSubImage2D = NULL;
+static PFNGLUSEPROGRAMPROC p_glUseProgram = NULL;
+static PFNGLUNIFORM1IPROC p_glUniform1i = NULL;
+static PFNGLVERTEXATTRIBPOINTERPROC p_glVertexAttribPointer = NULL;
+static PFNGLENABLEVERTEXATTRIBARRAYPROC p_glEnableVertexAttribArray = NULL;
+static PFNGLDRAWARRAYSPROC p_glDrawArrays = NULL;
+static PFNGLDISABLEVERTEXATTRIBARRAYPROC p_glDisableVertexAttribArray = NULL;
+static PFNGLDELETETEXTURESPROC p_glDeleteTextures = NULL;
+
+static bool GLESLoadFunctions(void)
+{
+#define LOAD_GLES_PROC(variable, type, name) \
+    variable = (type)SDL_GL_GetProcAddress(name); \
+    if (!variable) { \
+      fprintf(stderr, "Missing GLES function: %s\n", name); \
+      return false; \
+    }
+
+  LOAD_GLES_PROC(p_glCreateShader, PFNGLCREATESHADERPROC, "glCreateShader")
+  LOAD_GLES_PROC(p_glShaderSource, PFNGLSHADERSOURCEPROC, "glShaderSource")
+  LOAD_GLES_PROC(p_glCompileShader, PFNGLCOMPILESHADERPROC, "glCompileShader")
+  LOAD_GLES_PROC(p_glGetShaderiv, PFNGLGETSHADERIVPROC, "glGetShaderiv")
+  LOAD_GLES_PROC(p_glGetShaderInfoLog, PFNGLGETSHADERINFOLOGPROC, "glGetShaderInfoLog")
+  LOAD_GLES_PROC(p_glGetError, PFNGLGETERRORPROC, "glGetError")
+  LOAD_GLES_PROC(p_glDeleteShader, PFNGLDELETESHADERPROC, "glDeleteShader")
+  LOAD_GLES_PROC(p_glCreateProgram, PFNGLCREATEPROGRAMPROC, "glCreateProgram")
+  LOAD_GLES_PROC(p_glAttachShader, PFNGLATTACHSHADERPROC, "glAttachShader")
+  LOAD_GLES_PROC(p_glBindAttribLocation, PFNGLBINDATTRIBLOCATIONPROC, "glBindAttribLocation")
+  LOAD_GLES_PROC(p_glLinkProgram, PFNGLLINKPROGRAMPROC, "glLinkProgram")
+  LOAD_GLES_PROC(p_glDeleteProgram, PFNGLDELETEPROGRAMPROC, "glDeleteProgram")
+  LOAD_GLES_PROC(p_glGetProgramiv, PFNGLGETPROGRAMIVPROC, "glGetProgramiv")
+  LOAD_GLES_PROC(p_glGetProgramInfoLog, PFNGLGETPROGRAMINFOLOGPROC, "glGetProgramInfoLog")
+  LOAD_GLES_PROC(p_glGetAttribLocation, PFNGLGETATTRIBLOCATIONPROC, "glGetAttribLocation")
+  LOAD_GLES_PROC(p_glGetUniformLocation, PFNGLGETUNIFORMLOCATIONPROC, "glGetUniformLocation")
+  LOAD_GLES_PROC(p_glGenTextures, PFNGLGENTEXTURESPROC, "glGenTextures")
+  LOAD_GLES_PROC(p_glBindTexture, PFNGLBINDTEXTUREPROC, "glBindTexture")
+  LOAD_GLES_PROC(p_glTexParameteri, PFNGLTEXPARAMETERIPROC, "glTexParameteri")
+  LOAD_GLES_PROC(p_glPixelStorei, PFNGLPIXELSTOREIPROC, "glPixelStorei")
+  LOAD_GLES_PROC(p_glDisable, PFNGLDISABLEPROC, "glDisable")
+  LOAD_GLES_PROC(p_glGetString, PFNGLGETSTRINGPROC, "glGetString")
+  LOAD_GLES_PROC(p_glViewport, PFNGLVIEWPORTPROC, "glViewport")
+  LOAD_GLES_PROC(p_glClearColor, PFNGLCLEARCOLORPROC, "glClearColor")
+  LOAD_GLES_PROC(p_glClear, PFNGLCLEARPROC, "glClear")
+  LOAD_GLES_PROC(p_glActiveTexture, PFNGLACTIVETEXTUREPROC, "glActiveTexture")
+  LOAD_GLES_PROC(p_glTexImage2D, PFNGLTEXIMAGE2DPROC, "glTexImage2D")
+  LOAD_GLES_PROC(p_glTexSubImage2D, PFNGLTEXSUBIMAGE2DPROC, "glTexSubImage2D")
+  LOAD_GLES_PROC(p_glUseProgram, PFNGLUSEPROGRAMPROC, "glUseProgram")
+  LOAD_GLES_PROC(p_glUniform1i, PFNGLUNIFORM1IPROC, "glUniform1i")
+  LOAD_GLES_PROC(p_glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC, "glVertexAttribPointer")
+  LOAD_GLES_PROC(p_glEnableVertexAttribArray, PFNGLENABLEVERTEXATTRIBARRAYPROC, "glEnableVertexAttribArray")
+  LOAD_GLES_PROC(p_glDrawArrays, PFNGLDRAWARRAYSPROC, "glDrawArrays")
+  LOAD_GLES_PROC(p_glDisableVertexAttribArray, PFNGLDISABLEVERTEXATTRIBARRAYPROC, "glDisableVertexAttribArray")
+  LOAD_GLES_PROC(p_glDeleteTextures, PFNGLDELETETEXTURESPROC, "glDeleteTextures")
+
+#undef LOAD_GLES_PROC
+  return true;
+}
+
+// Redirect GLES calls to SDL's context-resolved entry points.
+#define glCreateShader p_glCreateShader
+#define glShaderSource p_glShaderSource
+#define glCompileShader p_glCompileShader
+#define glGetShaderiv p_glGetShaderiv
+#define glGetShaderInfoLog p_glGetShaderInfoLog
+#define glGetError p_glGetError
+#define glDeleteShader p_glDeleteShader
+#define glCreateProgram p_glCreateProgram
+#define glAttachShader p_glAttachShader
+#define glBindAttribLocation p_glBindAttribLocation
+#define glLinkProgram p_glLinkProgram
+#define glDeleteProgram p_glDeleteProgram
+#define glGetProgramiv p_glGetProgramiv
+#define glGetProgramInfoLog p_glGetProgramInfoLog
+#define glGetAttribLocation p_glGetAttribLocation
+#define glGetUniformLocation p_glGetUniformLocation
+#define glGenTextures p_glGenTextures
+#define glBindTexture p_glBindTexture
+#define glTexParameteri p_glTexParameteri
+#define glPixelStorei p_glPixelStorei
+#define glDisable p_glDisable
+#define glGetString p_glGetString
+#define glViewport p_glViewport
+#define glClearColor p_glClearColor
+#define glClear p_glClear
+#define glActiveTexture p_glActiveTexture
+#define glTexImage2D p_glTexImage2D
+#define glTexSubImage2D p_glTexSubImage2D
+#define glUseProgram p_glUseProgram
+#define glUniform1i p_glUniform1i
+#define glVertexAttribPointer p_glVertexAttribPointer
+#define glEnableVertexAttribArray p_glEnableVertexAttribArray
+#define glDrawArrays p_glDrawArrays
+#define glDisableVertexAttribArray p_glDisableVertexAttribArray
+#define glDeleteTextures p_glDeleteTextures
+
+static GLuint GLESCompileShader(GLenum type, const char *source)
+{
+  GLuint shader = glCreateShader(type);
+  if (!shader) {
+    fprintf(stderr, "GLES glCreateShader failed\n");
+    return 0;
+  }
+
+  glShaderSource(shader, 1, &source, NULL);
+  glCompileShader(shader);
+
+  GLint ok = GL_FALSE;
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &ok);
+
+  if (!ok) {
+    GLint logLength = 0;
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+
+    char log[2048] = {0};
+    GLsizei written = 0;
+    if (logLength > 1) {
+      glGetShaderInfoLog(shader, sizeof(log) - 1, &written, log);
+    }
+
+    fprintf(stderr, "GLES %s shader compilation failed: %s\n",
+            type == GL_VERTEX_SHADER ? "vertex" : "fragment", log);
+    fprintf(stderr, "Shader source:\n%s\n", source);
+
+    glDeleteShader(shader);
+    return 0;
+  }
+
+  return shader;
+}
+
+static bool GLESInitialize(void)
+{
+  if (!GLESLoadFunctions()) {
+    return false;
+  }
+
+  const char *vertex_source =
+    "attribute vec2 a_position;\n"
+    "attribute vec2 a_texcoord;\n"
+    "varying vec2 v_texcoord;\n"
+    "void main() { gl_Position = vec4(a_position, 0.0, 1.0); v_texcoord = a_texcoord; }\n";
+
+  const char *fragment_source =
+    "precision mediump float;\n"
+    "varying vec2 v_texcoord;\n"
+    "uniform sampler2D u_texture;\n"
+    "void main() { gl_FragColor = texture2D(u_texture, v_texcoord); }\n";
+
+  GLuint vs = GLESCompileShader(GL_VERTEX_SHADER, vertex_source);
+  GLuint fs = GLESCompileShader(GL_FRAGMENT_SHADER, fragment_source);
+
+  if (!vs || !fs) {
+    if (vs) { glDeleteShader(vs); }
+    if (fs) { glDeleteShader(fs); }
+    return false;
+  }
+
+  gles_program = glCreateProgram();
+  if (!gles_program) {
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    return false;
+  }
+
+  glAttachShader(gles_program, vs);
+  glAttachShader(gles_program, fs);
+  glBindAttribLocation(gles_program, 0, "a_position");
+  glBindAttribLocation(gles_program, 1, "a_texcoord");
+  glLinkProgram(gles_program);
+  glDeleteShader(vs);
+  glDeleteShader(fs);
+
+  GLint linked = GL_FALSE;
+  glGetProgramiv(gles_program, GL_LINK_STATUS, &linked);
+  if (!linked) {
+    char log[1024] = {0};
+    glGetProgramInfoLog(gles_program, sizeof(log), NULL, log);
+    fprintf(stderr, "GLES program link failed: %s\n", log);
+    glDeleteProgram(gles_program);
+    gles_program = 0;
+    return false;
+  }
+
+  gles_position = glGetAttribLocation(gles_program, "a_position");
+  gles_texcoord = glGetAttribLocation(gles_program, "a_texcoord");
+  gles_sampler = glGetUniformLocation(gles_program, "u_texture");
+
+  glGenTextures(2, gles_textures);
+
+  for (int i = 0; i < 2; ++i) {
+    glBindTexture(GL_TEXTURE_2D, gles_textures[i]);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  }
+
+  gles_texture_width[0] = gles_texture_width[1] = 0;
+  gles_texture_height[0] = gles_texture_height[1] = 0;
+  gles_texture_index = 0;
+
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_BLEND);
+
+  printf("OpenGL ES renderer: %s\n", (const char *)glGetString(GL_RENDERER));
+  printf("OpenGL ES version: %s\n", (const char *)glGetString(GL_VERSION));
+  return true;
+}
+
+void FrameShutdownGL(void)
+{
+  if (sdl2glcontext && sdl2window) {
+    SDL_GL_MakeCurrent(sdl2window, sdl2glcontext);
+
+    glDeleteTextures(2, gles_textures);
+    gles_textures[0] = 0;
+    gles_textures[1] = 0;
+    gles_texture_width[0] = gles_texture_width[1] = 0;
+    gles_texture_height[0] = gles_texture_height[1] = 0;
+
+    if (gles_program) glDeleteProgram(gles_program);
+
+    gles_textures[0] = 0;
+    gles_textures[1] = 0;
+    gles_texture_width[0] = gles_texture_width[1] = 0;
+    gles_texture_height[0] = gles_texture_height[1] = 0;
+
+    gles_program = 0;
+
+    SDL_GL_MakeCurrent(sdl2window, NULL);
+    SDL_GL_DeleteContext(sdl2glcontext);
+    sdl2glcontext = NULL;
+  }
+}
+
+void FramePresentGL(SDL_Surface *frame)
+{
+  if (!sdl2window || !sdl2glcontext || !gles_program ||
+      !gles_textures[0] || !gles_textures[1] || !frame) {
+    return;
+  }
+
+  if (SDL_GL_GetCurrentContext() != sdl2glcontext &&
+      SDL_GL_MakeCurrent(sdl2window, sdl2glcontext) != 0) {
+    fprintf(stderr, "SDL_GL_MakeCurrent failed during presentation: %s\n",
+            SDL_GetError());
+    return;
+  }
+
+  int width = 0, height = 0;
+  SDL_GL_GetDrawableSize(sdl2window, &width, &height);
+  if (width <= 0 || height <= 0) {
+    if (!g_singlethreaded) {
+      SDL_GL_MakeCurrent(sdl2window, NULL);
+    }
+    return;
+  }
+
+  glViewport(0, 0, width, height);
+  glClearColor(0.f, 0.f, 0.f, 1.f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  if (SDL_MUSTLOCK(frame) && SDL_LockSurface(frame) != 0) {
+    fprintf(stderr, "SDL_LockSurface failed for GLES upload: %s\n", SDL_GetError());
+    if (!g_singlethreaded) {
+      SDL_GL_MakeCurrent(sdl2window, NULL);
+    }
+    return;
+  }
+
+  gles_texture_index ^= 1;
+  const GLuint texture = gles_textures[gles_texture_index];
+
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, texture);
+
+  if (gles_texture_width[gles_texture_index] != frame->w ||
+      gles_texture_height[gles_texture_index] != frame->h) {
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frame->w, frame->h, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    gles_texture_width[gles_texture_index] = frame->w;
+    gles_texture_height[gles_texture_index] = frame->h;
+  }
+
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame->w, frame->h,
+                  GL_RGBA, GL_UNSIGNED_BYTE, frame->pixels);
+
+  if (SDL_MUSTLOCK(frame)) {
+    SDL_UnlockSurface(frame);
+  }
+
+  const GLfloat vertices[] = {
+    -1.f, -1.f, 0.f, 1.f,
+     1.f, -1.f, 1.f, 1.f,
+    -1.f,  1.f, 0.f, 0.f,
+     1.f,  1.f, 1.f, 0.f
+  };
+
+  glUseProgram(gles_program);
+  glUniform1i(gles_sampler, 0);
+  glVertexAttribPointer(gles_position, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), vertices);
+  glVertexAttribPointer(gles_texcoord, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), vertices + 2);
+  glEnableVertexAttribArray(gles_position);
+  glEnableVertexAttribArray(gles_texcoord);
+  glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+  glDisableVertexAttribArray(gles_position);
+  glDisableVertexAttribArray(gles_texcoord);
+
+  SDL_GL_SwapWindow(sdl2window);
+
+  if (!g_singlethreaded) {
+    SDL_GL_MakeCurrent(sdl2window, NULL); // Gemini
+  }
+}
+
+// Do not redirect any GL names outside this SDL2 GLES implementation.
+#undef glCreateShader
+#undef glShaderSource
+#undef glCompileShader
+#undef glGetShaderiv
+#undef glGetShaderInfoLog
+#undef glGetError
+#undef glDeleteShader
+#undef glCreateProgram
+#undef glAttachShader
+#undef glBindAttribLocation
+#undef glLinkProgram
+#undef glDeleteProgram
+#undef glGetProgramiv
+#undef glGetProgramInfoLog
+#undef glGetAttribLocation
+#undef glGetUniformLocation
+#undef glGenTextures
+#undef glBindTexture
+#undef glTexParameteri
+#undef glPixelStorei
+#undef glDisable
+#undef glGetString
+#undef glViewport
+#undef glClearColor
+#undef glClear
+#undef glActiveTexture
+#undef glTexImage2D
+#undef glTexSubImage2D
+#undef glUseProgram
+#undef glUniform1i
+#undef glVertexAttribPointer
+#undef glEnableVertexAttribArray
+#undef glDrawArrays
+#undef glDisableVertexAttribArray
+#undef glDeleteTextures
 #endif
 
 SDL_Surface *apple_icon;
@@ -218,11 +622,9 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
     tempSurface = screen;
   } // Use screen, if none available
 #ifdef SDL2
-  // Copy the current contents of our sdl2surface to generate a dimmed background.
-  // It seems that something clears the screen in this SDL2 path
-  my_screen = SDL_ConvertSurface(screen, screen->format, 0);
+  my_screen = SDL_ConvertSurface(tempSurface, screen->format, 0);
   //SDL_SetPaletteColors(my_screen->format->palette, tempSurface->format->palette->colors, 0, tempSurface->format->palette->ncolors);
-  SDL_BlitScaled(sdl2surface, NULL, my_screen, NULL);
+  SDL_BlitScaled(tempSurface, NULL, my_screen, NULL);
   surfacefade32(my_screen, 0.2F);
   SDL_BlitScaled(my_screen, NULL, screen, NULL);    // show background
 #else
@@ -276,8 +678,7 @@ void FrameShowHelpScreen(int sx, int sy) // sx, sy - sizes of current window (sc
   SDL_FreeSurface(tempSurface);
   SDL_FreeSurface(my_screen);
 
-  SDL_BlitScaled(screen, NULL, sdl2surface, NULL);
-  SDL_UpdateWindowSurface(sdl2window);
+  FramePresentGL(screen);
 #else
   SDL_SoftStretchOr(tempSurface, &logo, screen, &scrr);
   SDL_Flip(screen); // Show the screen
@@ -351,12 +752,6 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
     case SDL_WINDOWEVENT:
       if (e->window.event == SDL_WINDOWEVENT_RESIZED) {
-        sdl2surface = SDL_GetWindowSurface(sdl2window);
-
-        if (sdl2surface == NULL) {
-          printf("SDL_GetWindowSurface failed: %s\n", SDL_GetError());
-          return;
-        }
 
         g_WindowResized = false;
 
@@ -967,17 +1362,50 @@ int FrameCreateWindow()
 
   bIamFullScreened = false; // At startup not in fullscreen mode
 #ifdef SDL2
-  sdl2window = SDL_CreateWindow("linapple",
+
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
+
+  sdl2window = SDL_CreateWindow(g_pAppTitle,
                                 SDL_WINDOWPOS_UNDEFINED,
                                 SDL_WINDOWPOS_UNDEFINED,
                                 g_ScreenWidth, g_ScreenHeight,
-                                sdl2windowflags);
+                                sdl2windowflags | SDL_WINDOW_OPENGL);
 
-  sdl2surface = SDL_GetWindowSurface(sdl2window);
+  if (!sdl2window) {
+    fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+    return 1;
+  }
 
-  screen = SDL_CreateRGBSurface(0, g_ScreenWidth, g_ScreenHeight, sdl2surface->format->BitsPerPixel,
-                                sdl2surface->format->Rmask, sdl2surface->format->Gmask,
-                                sdl2surface->format->Bmask, sdl2surface->format->Amask);
+  sdl2glcontext = SDL_GL_CreateContext(sdl2window);
+  if (!sdl2glcontext) {
+    fprintf(stderr, "SDL_GL_CreateContext (OpenGL ES 2.0) failed: %s\n", SDL_GetError());
+    return 1;
+  }
+
+  if (SDL_GL_MakeCurrent(sdl2window, sdl2glcontext) != 0) {
+    fprintf(stderr, "SDL_GL_MakeCurrent failed: %s\n", SDL_GetError());
+    SDL_GL_DeleteContext(sdl2glcontext);
+    sdl2glcontext = NULL;
+    return 1;
+  }
+
+  SDL_GL_SetSwapInterval(0);
+
+  if (!GLESInitialize()) {
+    fprintf(stderr, "Could not initialize OpenGL ES 2.0 renderer.\n");
+    FrameShutdownGL();
+    return 1;
+  }
+
+  screen = SDL_CreateRGBSurfaceWithFormat(0, g_ScreenWidth, g_ScreenHeight, 32, SDL_PIXELFORMAT_RGBA32);
+
+  SDL_GL_MakeCurrent(sdl2window, NULL);
+
 #else
   screen = SDL_SetVideoMode(g_ScreenWidth, g_ScreenHeight, SCREEN_BPP, SDL_SWSURFACE | SDL_HWPALETTE);
 #endif
