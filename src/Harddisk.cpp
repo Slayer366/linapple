@@ -165,6 +165,13 @@ void HD_ResetStatus(void)
   HDDStatus = DISK_STATUS_OFF;
 }
 
+static void HD_SetStatus(int status)
+{
+  if (HDDStatus != status) {
+    HDDStatus = status;
+    FrameRefreshStatus(DRAW_LEDS);
+  }
+}
 
 static void GetImageTitle(LPCTSTR imageFileName, PHDD pHardDrive)
 {
@@ -564,7 +571,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
               break;
             case 0x01: //read
             {
-              HDDStatus = DISK_STATUS_READ;
+              HD_SetStatus(DISK_STATUS_READ);
               unsigned int br = GetFileSize(pHDD->hd_file, NULL);
 //              if ((unsigned int)(pHDD->hd_diskblock * 512) <= br) { // seek to block
 //                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
@@ -589,7 +596,7 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
               break;
             case 0x02: //write
             {
-              HDDStatus = DISK_STATUS_WRITE;
+              HD_SetStatus(DISK_STATUS_WRITE);
               unsigned int bw = GetFileSize(pHDD->hd_file, NULL);
 //              if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
               unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
@@ -648,11 +655,11 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
             }
               break;
             case 0x03: //format
-              HDDStatus = DISK_STATUS_WRITE;
+              HD_SetStatus(DISK_STATUS_WRITE);
               break;
           }
         } else {
-          HDDStatus = DISK_STATUS_OFF;
+          HD_SetStatus(DISK_STATUS_OFF);
           pHDD->hd_error = 1;
           r = DEVICE_UNKNOWN_ERROR;
         }
@@ -730,6 +737,6 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
         return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
     }
   }
-  FrameRefreshStatus(DRAW_LEDS);  // update status area
+//  FrameRefreshStatus(DRAW_LEDS);  // update status area
   return r;
 }
