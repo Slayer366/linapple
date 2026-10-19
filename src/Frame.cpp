@@ -727,6 +727,9 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
   if (e->type == SDL_KEYDOWN && e->key.keysym.sym == SDLK_ESCAPE)
   {
+    if (g_nAppMode == MODE_LOGO) {
+      return;
+    }
     OSK_Show();
     return;
   }
