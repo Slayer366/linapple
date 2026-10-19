@@ -646,43 +646,14 @@ static void ActivateSelected()
 
 
   if (key.type == OSK_APPLE) {
-    SDL_Event event;
 
     if (key.label && !strcmp(key.label, "OPEN"))
     {
-      memset(&event, 0, sizeof(event));
-
-      event.type = SDL_KEYDOWN;
-      event.key.type = SDL_KEYDOWN;
-      event.key.state = SDL_PRESSED;
-      event.key.keysym.sym = SDLK_LALT;
-      SDL_PushEvent(&event);
-
-      memset(&event, 0, sizeof(event));
-
-      event.type = SDL_KEYUP;
-      event.key.type = SDL_KEYUP;
-      event.key.state = SDL_RELEASED;
-      event.key.keysym.sym = SDLK_LALT;
-      SDL_PushEvent(&event);
+      JoyPressAppleButton(0);
     }
     else if (key.label && !strcmp(key.label, "CLOSED"))
     {
-      memset(&event, 0, sizeof(event));
-
-      event.type = SDL_KEYDOWN;
-      event.key.type = SDL_KEYDOWN;
-      event.key.state = SDL_PRESSED;
-      event.key.keysym.sym = SDLK_RALT;
-      SDL_PushEvent(&event);
-
-      memset(&event, 0, sizeof(event));
-
-      event.type = SDL_KEYUP;
-      event.key.type = SDL_KEYUP;
-      event.key.state = SDL_RELEASED;
-      event.key.keysym.sym = SDLK_RALT;
-      SDL_PushEvent(&event);
+      JoyPressAppleButton(1);
     }
 
     return;

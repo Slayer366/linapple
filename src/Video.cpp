@@ -1345,9 +1345,6 @@ SDL_Surface* LoadCharset() {
   {
     // convert format
 #ifdef SDL2
-//    SDL_Surface *result = SDL_ConvertSurfaceFormat(tmp, SDL_GetWindowPixelFormat(sdl2window), 0);
-//    SDL_Surface *result = tmp;
-//    SDL_FreeSurface(tmp);
     SDL_Surface *result = SDL_CreateRGBSurface(SDL_SWSURFACE, tmp->w, tmp->h, 8, 0, 0, 0, 0);
     if (result) {
         SDL_SetPaletteColors(result->format->palette, framebufferinfo, 0, 256);
@@ -1365,6 +1362,7 @@ SDL_Surface* LoadCharset() {
             }
         }
     }
+    SDL_FreeSurface(tmp);
 #else
     SDL_Surface *result = SDL_DisplayFormat(tmp);
     SDL_FreeSurface(tmp);

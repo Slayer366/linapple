@@ -338,6 +338,11 @@ unsigned int JoyGetJoystick0Index()
   return joy1index;
 }
 
+void JoyPressAppleButton(int button)
+{
+  if (button == 0 || button == 1)
+    buttonlatch[button] = BUTTONTIME;
+}
 
 void JoyShutDown() {
   // First of all, let's close all existing SDL joysticks

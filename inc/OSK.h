@@ -18,6 +18,7 @@ void OSK_Cleanup();
 bool JoyIsJoystick0Enabled();
 SDL_Joystick *JoyGetJoystick0();
 unsigned int JoyGetJoystick0Index();
+extern void JoyPressAppleButton(int button);
 
 bool OSK_HandleEvent(SDL_Event* event);
 
