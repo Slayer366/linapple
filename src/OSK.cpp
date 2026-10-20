@@ -48,13 +48,18 @@ static bool g_bOSKCaps = false;
 static bool g_OSKInvertJoystick = false;
 static bool g_OSKSwapJoystickAxes = false;
 
+#ifdef SDL2
+static SDL_GameController *g_OSKJoystick = NULL;
+#else
 static SDL_Joystick *g_OSKJoystick = NULL;
-static bool g_OSKOwnsJoystick = false;
 
 static int g_OSKDPadUp = -1;
 static int g_OSKDPadDown = -1;
 static int g_OSKDPadLeft = -1;
 static int g_OSKDPadRight = -1;
+#endif
+
+static bool g_OSKOwnsJoystick = false;
 
 static const char *OSK_SPRITE_SHEET = "res/osk.png";
 
@@ -540,8 +545,12 @@ static void OSK_OpenJoystick()
 
   /* LinApple has joysticks disabled. Open the configured joystick temporarily for OSK use only. */
   if (SDL_NumJoysticks() > 0) {
+#ifdef SDL2
+    if (SDL_IsGameController((int)JoyGetJoystick0Index()))
+      g_OSKJoystick = SDL_GameControllerOpen((int)JoyGetJoystick0Index());
+#else
     g_OSKJoystick = SDL_JoystickOpen(JoyGetJoystick0Index());
-
+#endif
     if (g_OSKJoystick) {
       g_OSKOwnsJoystick = true;
     }
@@ -551,7 +560,11 @@ static void OSK_OpenJoystick()
 static void OSK_CloseJoystick()
 {
   if (g_OSKOwnsJoystick && g_OSKJoystick) {
+#ifdef SDL2
+    SDL_GameControllerClose(g_OSKJoystick);
+#else
     SDL_JoystickClose(g_OSKJoystick);
+#endif
   }
   g_OSKJoystick = NULL;
   g_OSKOwnsJoystick = false;
@@ -756,6 +769,10 @@ void OSK_Show()
     g_OSKInvertJoystick = false;
     g_OSKSwapJoystickAxes = false;
 
+#ifdef SDL2
+    // SDL2 uses SDL_GAMECONTROLLERCONFIG and SDL_GAMECONTROLLERCONFIG_FILE for
+    // individual controller configurations and will not require this manual section.
+#else
     /* The DEVICE_NAME envar is expected to be populated/filled in by PortMaster on supported devices */
     const char *deviceName = getenv("DEVICE_NAME");
 
@@ -874,7 +891,7 @@ void OSK_Show()
         g_OSKDPadLeft = 8;
         g_OSKDPadRight = 9;
     }
-
+#endif
     /* Function to enable joystick for OSK if joystick support is disabled in LinApple */
     OSK_OpenJoystick();
 }
@@ -943,33 +960,35 @@ bool OSK_HandleEvent(SDL_Event *event)
       return true;
     }
 
-    case SDL_JOYBUTTONDOWN:
+    case SDL_CONTROLLERBUTTONDOWN:
     {
-      if (event->jbutton.button == 0 || event->jbutton.button == 1 || 
-          event->jbutton.button == 2 || event->jbutton.button == 3 || 
-          event->jbutton.button == 4)
+      if (event->cbutton.button == SDL_CONTROLLER_BUTTON_A ||
+          event->cbutton.button == SDL_CONTROLLER_BUTTON_B ||
+          event->cbutton.button == SDL_CONTROLLER_BUTTON_X ||
+          event->cbutton.button == SDL_CONTROLLER_BUTTON_Y ||
+          event->cbutton.button == SDL_CONTROLLER_BUTTON_START)
       {
         if (OSK_AllowInput())
           ActivateSelected();
         return true;
       }
 
-      if (event->jbutton.button == g_OSKDPadUp) {
+      if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_UP) {
         if (OSK_AllowInput())
           MoveVertical(-1);
         return true;
       }
-      if (event->jbutton.button == g_OSKDPadDown) {
+      if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_DOWN) {
         if (OSK_AllowInput())
           MoveVertical(1);
         return true;
       }
-      if (event->jbutton.button == g_OSKDPadLeft) {
+      if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_LEFT) {
         if (OSK_AllowInput())
           MoveHorizontal(-1);
         return true;
       }
-      if (event->jbutton.button == g_OSKDPadRight) {
+      if (event->cbutton.button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT) {
         if (OSK_AllowInput())
           MoveHorizontal(1);
         return true;
@@ -978,47 +997,15 @@ bool OSK_HandleEvent(SDL_Event *event)
       return true;
     }
 
-    case SDL_JOYHATMOTION:
-    {
-      switch (event->jhat.value)
-        {
-          case SDL_HAT_UP:
-            if (OSK_AllowInput())
-              MoveVertical(-1);
-            break;
-          case SDL_HAT_DOWN:
-            if (OSK_AllowInput())
-              MoveVertical(1);
-            break;
-          case SDL_HAT_LEFT:
-            if (OSK_AllowInput())
-              MoveHorizontal(-1);
-            break;
-          case SDL_HAT_RIGHT:
-            if (OSK_AllowInput())
-              MoveHorizontal(1);
-            break;
-
-          default:
-            break;
-        }
-
+    case SDL_CONTROLLERBUTTONUP:
       return true;
-    }
 
-    case SDL_JOYAXISMOTION:
+    case SDL_CONTROLLERAXISMOTION:
     {
-        Sint16 value = event->jaxis.value;
-        int axis = event->jaxis.axis;
+        Sint16 value = event->caxis.value;
+        int axis = event->caxis.axis;
 
-        if (g_OSKSwapJoystickAxes) {
-            axis = 1 - axis;
-        }
-        if (g_OSKInvertJoystick) {
-            value = -value;
-        }
-
-        if (axis == 0)      {
+        if (axis == SDL_CONTROLLER_AXIS_LEFTX)      {
         if (value < -16000)
         {
           if (OSK_AllowInput())
@@ -1030,7 +1017,7 @@ bool OSK_HandleEvent(SDL_Event *event)
             MoveHorizontal(1);
         }
       }
-      else if (axis == 1)
+      else if (axis == SDL_CONTROLLER_AXIS_LEFTY)
       {
         if (value < -16000)
         {

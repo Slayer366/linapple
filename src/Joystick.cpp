@@ -142,16 +142,27 @@ unsigned int joyXAxisInvert = 0;
 unsigned int joyYAxisInvert = 0;
 bool joyquitevent = 0;
 
+#ifdef SDL2
+SDL_GameController *joy1 = NULL;
+SDL_GameController *joy2 = NULL;
+#else
 SDL_Joystick *joy1 = NULL;
 SDL_Joystick *joy2 = NULL;
+#endif
 
 void CheckJoyExit() {
+#ifdef SDL2
+  SDL_GameControllerUpdate();
+  joyquitevent = joy1 && SDL_GameControllerGetButton(joy1, SDL_CONTROLLER_BUTTON_BACK) &&
+                 SDL_GameControllerGetButton(joy1, SDL_CONTROLLER_BUTTON_START);
+#else
   SDL_JoystickUpdate(); // update all joysticks states
   if (SDL_JoystickGetButton(joy1, joyexitbutton0) && SDL_JoystickGetButton(joy1, joyexitbutton1)) {
     joyquitevent = true;
   } else {
     joyquitevent = false;
   }
+#endif
 }
 
 void CheckJoystick0() {
@@ -162,6 +173,22 @@ void CheckJoystick0() {
   unsigned int currtime = GetTickCount();
   if ((currtime - lastcheck >= 10) || joybutton[0] || joybutton[1]) {
     lastcheck = currtime;
+#ifdef SDL2
+    SDL_GameControllerUpdate(); // update all game controllers states
+    if (SDL_GameControllerGetButton(joy1, SDL_CONTROLLER_BUTTON_A) && !joybutton[0]) {
+      buttonlatch[0] = BUTTONTIME;
+    }
+    if (SDL_GameControllerGetButton(joy1, SDL_CONTROLLER_BUTTON_B) && !joybutton[1] &&
+        (joyinfo[joytype[1]].device == DEVICE_NONE)  // Only consider 2nd button if NOT emulating a 2nd Apple joystick
+      ) {
+      buttonlatch[1] = BUTTONTIME;
+    }
+    joybutton[0] = SDL_GameControllerGetButton(joy1, SDL_CONTROLLER_BUTTON_A);
+    if (joyinfo[joytype[1]].device ==
+        DEVICE_NONE) { // Only consider 2nd button if NOT emulating a 2nd Apple joystick button
+      joybutton[1] = SDL_GameControllerGetButton(joy1, SDL_CONTROLLER_BUTTON_B);
+    }
+#else
     SDL_JoystickUpdate(); // update all joysticks states
     if ((SDL_JoystickGetButton(joy1, joy1button1)) && !joybutton[0]) {
       buttonlatch[0] = BUTTONTIME;
@@ -176,8 +203,11 @@ void CheckJoystick0() {
         DEVICE_NONE) { // Only consider 2nd button if NOT emulating a 2nd Apple joystick button
       joybutton[1] = SDL_JoystickGetButton(joy1, joy1button2);
     }
+#endif
 
 #ifdef SDL2
+  // Joystick HATs are defined with SDL_GAMECONTROLLERCONFIG and SDL_GAMECONTROLLERCONFIG_FILE
+#else
 	// add by trngaje for hat
 	switch(SDL_JoystickGetHat(joy1, 0))
 	{
@@ -204,10 +234,13 @@ void CheckJoystick0() {
 		keydown[JK_LEFT] = false;
 	}
 #endif
-	//printf("[trngaje] hat0 = %d\n", SDL_JoystickGetHat(joy1, 0)); // 1 (up),2 (right),4 (down),8 (left)
-
+#ifdef SDL2
+    xpos[0] = ((int)SDL_GameControllerGetAxis(joy1, SDL_CONTROLLER_AXIS_LEFTX) + 32768) >> 8;
+    ypos[0] = ((int)SDL_GameControllerGetAxis(joy1, SDL_CONTROLLER_AXIS_LEFTY) + 32768) >> 8;
+#else
     xpos[0] = (SDL_JoystickGetAxis(joy1, joy1axis0) - joysubx[0]) >> joyshrx[0];
     ypos[0] = (SDL_JoystickGetAxis(joy1, joy1axis1) - joysuby[0]) >> joyshry[0];
+#endif
 
     // "Square" a modern analog stick (e.g. Playstation)
     auto x = xpos[0];
@@ -269,6 +302,9 @@ void CheckJoystick0() {
     xpos[0] += g_nPdlTrimX;
     ypos[0] += g_nPdlTrimY;
 
+#ifdef SDL2
+    // Thumbstick configuraion defined with SDL_GAMECONTROLLERCONFIG and SDL_GAMECONTROLLERCONFIG_FILE
+#else
     if(joyXAxisInvert > 0){
       Sint16 val = xpos[0] - PDL_CENTRAL;
       val = -val;
@@ -283,6 +319,7 @@ void CheckJoystick0() {
     }
 
     //printf("XPos: %i    YPos: %i \n", xpos[0], ypos[0]);
+#endif
   }
 }
 
@@ -294,6 +331,20 @@ void CheckJoystick1() {
   unsigned int currtime = GetTickCount();
   if ((currtime - lastcheck >= 10) || joybutton[2]) {
     lastcheck = currtime;
+#ifdef SDL2
+    SDL_GameControllerUpdate(); // update all game controllers states
+    if (SDL_GameControllerGetButton(joy2, SDL_CONTROLLER_BUTTON_A) && !joybutton[2]) {
+      buttonlatch[2] = BUTTONTIME;
+      if (joyinfo[joytype[1]].device != DEVICE_NONE) {
+        buttonlatch[1] = BUTTONTIME;  // Re-map this button when emulating a 2nd Apple joystick
+      }
+    }
+    joybutton[2] = SDL_GameControllerGetButton(joy2, SDL_CONTROLLER_BUTTON_A);
+
+    if (joyinfo[joytype[1]].device != DEVICE_NONE) {
+      joybutton[1] = SDL_GameControllerGetButton(joy2, SDL_CONTROLLER_BUTTON_A); // Re-map this button when emulating a 2nd Apple joystick
+    }
+#else
     SDL_JoystickUpdate(); // update all joysticks states
     if (SDL_JoystickGetButton(joy2, joy2button1) && !joybutton[2]) {
       buttonlatch[2] = BUTTONTIME;
@@ -306,9 +357,15 @@ void CheckJoystick1() {
     if (joyinfo[joytype[1]].device != DEVICE_NONE) {
       joybutton[1] = SDL_JoystickGetButton(joy2, joy2button1); // Re-map this button when emulating a 2nd Apple joystick
     }
+#endif
 
+#ifdef SDL2
+    xpos[1] = ((int)SDL_GameControllerGetAxis(joy2, SDL_CONTROLLER_AXIS_LEFTX) + 32768) >> 8;
+    ypos[1] = ((int)SDL_GameControllerGetAxis(joy2, SDL_CONTROLLER_AXIS_LEFTY) + 32768) >> 8;
+#else
     xpos[1] = (SDL_JoystickGetAxis(joy2, joy2axis0) - joysubx[1]) >> joyshrx[1];
     ypos[1] = (SDL_JoystickGetAxis(joy2, joy2axis1) - joysuby[1]) >> joyshry[1];
+#endif
 
     // NB. This does not work for analogue joysticks (not self-centreing) - except if Trim=0
     if (xpos[1] == 127 || xpos[1] == 128) {
@@ -328,7 +385,11 @@ bool JoyIsJoystick0Enabled()
   return joyinfo[joytype[0]].device == DEVICE_JOYSTICK;
 }
 
+#ifdef SDL2
+SDL_GameController *JoyGetJoystick0()
+#else
 SDL_Joystick *JoyGetJoystick0()
+#endif
 {
   return joy1;
 }
@@ -346,12 +407,21 @@ void JoyPressAppleButton(int button)
 
 void JoyShutDown() {
   // First of all, let's close all existing SDL joysticks
+#ifdef SDL2
+  if (joy1) {
+    SDL_GameControllerClose(joy1);
+  }
+  if (joy2) {
+    SDL_GameControllerClose(joy2);
+  }
+#else
   if (joy1) {
     SDL_JoystickClose(joy1);
   }
   if (joy2) {
     SDL_JoystickClose(joy2);
   }
+#endif
 }
 
 void JoyInitialize()
@@ -364,21 +434,40 @@ void JoyInitialize()
   #define AXIS_MAX        32767   /* maximum value for axis coordinate */
 
   // First of all, let's close all existing SDL joysticks
+#ifdef SDL2
+  if (joy1) {
+    SDL_GameControllerClose(joy1);
+  }
+  if (joy2) {
+    SDL_GameControllerClose(joy2);
+  }
+#else
   if (joy1) {
     SDL_JoystickClose(joy1);
   }
   if (joy2) {
     SDL_JoystickClose(joy2);
   }
+#endif
+
   int number_of_joysticks = SDL_NumJoysticks();
 
   if (joyinfo[joytype[0]].device == DEVICE_JOYSTICK) {
     if (number_of_joysticks > 0) {
+#ifdef SDL2
+      joy1 = SDL_IsGameController((int)joy1index) ? SDL_GameControllerOpen((int)joy1index) : NULL;
+#else
       joy1 = SDL_JoystickOpen(joy1index); // open joystick and get its information into SDL_Joystick struct
+#endif
       joyshrx[0] = 0;
       joyshry[0] = 0;
       joysubx[0] = AXIS_MIN; //just do not know how to get wXmin and alike from SDL joysticks
       joysuby[0] = AXIS_MIN;
+#ifdef SDL2
+      if (!joy1) {
+        joytype[0] = DEVICE_MOUSE;
+      }
+#endif
       unsigned int xrange = AXIS_MAX - AXIS_MIN;
       unsigned int yrange = AXIS_MAX - AXIS_MIN;
       while (xrange > 256) {
@@ -398,11 +487,20 @@ void JoyInitialize()
 
   if (joyinfo[joytype[1]].device == DEVICE_JOYSTICK) {
     if (number_of_joysticks > 1) {
+#ifdef SDL2
+      joy2 = SDL_IsGameController((int)joy2index) ? SDL_GameControllerOpen((int)joy2index) : NULL;
+#else
       joy2 = SDL_JoystickOpen(joy2index); // open joystick #2 and get its information into SDL_Joystick struct
+#endif
       joyshrx[1] = 0;
       joyshry[1] = 0;
       joysubx[1] = AXIS_MIN;
       joysuby[1] = AXIS_MIN;
+#ifdef SDL2
+      if (!joy2) {
+        joytype[1] = DEVICE_NONE;
+      }
+#endif
       unsigned int xrange = AXIS_MAX - AXIS_MIN;
       unsigned int yrange = AXIS_MAX - AXIS_MIN;
       while (xrange > 256) {
@@ -413,8 +511,7 @@ void JoyInitialize()
         yrange >>= 1;
         ++joyshry[1];
       }
-    }
-    else {
+    } else {
       joytype[1] = DEVICE_NONE; // do not use
     }
   }

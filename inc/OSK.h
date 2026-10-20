@@ -16,7 +16,11 @@ void OSK_Hide();
 void OSK_Cleanup();
 
 bool JoyIsJoystick0Enabled();
+#ifdef SDL2
+SDL_GameController *JoyGetJoystick0();
+#else
 SDL_Joystick *JoyGetJoystick0();
+#endif
 unsigned int JoyGetJoystick0Index();
 extern void JoyPressAppleButton(int button);
 

@@ -484,6 +484,9 @@ void LoadConfiguration()
     LOAD(TEXT("Joy0Index"), &joy1index);
     LOAD(TEXT("Joy1Index"), &joy2index);
 
+#ifdef SDL2
+    // SDL2 uses SDL_GAMECONTROLLERCONFIG and SDL_GAMECONTROLLERCONFIG_FILE.
+#else
     LOAD(TEXT("Joy0Button1"), &joy1button1);
     LOAD(TEXT("Joy0Button2"), &joy1button2);
     LOAD(TEXT("Joy1Button1"), &joy2button1);
@@ -498,6 +501,7 @@ void LoadConfiguration()
 
     LOAD(TEXT("JoyInvertX"), &joyXAxisInvert);
     LOAD(TEXT("JoyInvertY"), &joyYAxisInvert);
+#endif
   }
 
   if (joytype[0] == 1) {
