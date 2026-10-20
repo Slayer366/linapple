@@ -806,8 +806,22 @@ void Woz1Read(imageinfoptr ptr, int track, int quartertrack, LPBYTE trackImageBu
   }
 
   if (bitIndex == 0) {
-    *nibbles = WozPackRawBits(record, bitCount, trackImageBuffer);
-    return;
+    const unsigned int samples = bitCount / 8U;
+    unsigned int bestOffset = 0;
+    unsigned int bestHighBitCount = 0;
+
+    for (unsigned int offset = 0; offset < 8U; ++offset) {
+      unsigned int score = 0;
+      for (unsigned int sample = 0; sample < samples; ++sample)
+        score += woz1_get_bit(record, offset + sample * 8U);
+
+      if (score > bestHighBitCount) {
+        bestHighBitCount = score;
+        bestOffset = offset;
+      }
+    }
+
+    bitIndex = bestOffset;
   }
 
   unsigned int bitsLeft = bitCount;
