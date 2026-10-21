@@ -16,7 +16,6 @@ enum {
 
 #ifdef SDL2
 extern SDL_Window *sdl2window;
-extern SDL_Surface *sdl2surface;
 void FramePresentGL(SDL_Surface *frame);
 void FrameShutdownGL(void);
 #endif
@@ -42,6 +41,8 @@ void FrameRegisterClass();
 void FrameReleaseDC();
 
 void FrameReleaseVideoDC();
+
+void FrameSaveBMP(void);
 
 void DrawFrameWindow();  // draw it!
 void FrameDispatchMessage(SDL_Event *e); // replacement for FrameWndProc.

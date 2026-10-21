@@ -1087,7 +1087,20 @@ void FrameSaveBMP(void) {
   }
 #pragma GCC diagnostic pop
 
+#ifdef SDL2
+  if (!g_WindowResized) {
+    if (g_nAppMode == MODE_LOGO) {
+      SDL_SaveBMP(g_hLogoBitmap, bmpName);  // Save file using SDL inner function
+    } else {
+      SDL_SaveBMP(g_hDeviceBitmap, bmpName);  // Save file using SDL inner function
+    }
+  } else {
+    SDL_SaveBMP(g_origscreen, bmpName);  // Save file using SDL inner function
+  }
+#else
   SDL_SaveBMP(screen, bmpName);  // Save file using SDL inner function
+#endif
+
   printf("File %s saved!\n", bmpName);
   i++;
 }
