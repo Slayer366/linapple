@@ -1,11 +1,7 @@
 #include "OSK.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
-#include "stretch.h"
-#include "Frame.h"
+#include "stdafx.h"
 
 /* Key types */
 enum
@@ -79,13 +75,6 @@ static int g_OSKAlphaMode = 0;
 /* Prevent one physical input from producing multiple OSK actions (simultaneous inputs) */
 static Uint32 g_OSKLastInputTime = 0;
 static const Uint32 OSK_INPUT_DELAY = 75;
-
-/* Making VideoRedrawScreen function from Video.cpp 
- * visible and accessible here.  This is so we can
- * call it to remove the OSK from the buffer so
- * we can get a clean screenshot.
- */
-void VideoRedrawScreen();
 
 static void AddKey(int x, int y, int w, int h,
                    const char *label, int key, int type, int row)
