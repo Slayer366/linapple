@@ -13,3 +13,7 @@ void Snapshot_SaveState();
 void Snapshot_Startup();
 
 void Snapshot_Shutdown();
+
+void Snapshot_OSKSaveState();
+
+void Snapshot_OSKLoadState();

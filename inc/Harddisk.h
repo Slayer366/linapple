@@ -8,6 +8,8 @@ void HD_SetEnabled(bool bEnabled);
 
 LPCTSTR HD_GetFullName(int drive);
 
+LPCTSTR HD_GetImagePath(int nDrive);
+
 void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot);
 
 void HD_Eject(const int iDrive);

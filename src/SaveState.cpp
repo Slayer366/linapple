@@ -189,6 +189,61 @@ void Snapshot_SaveState() {
   delete[] pSS;
 }
 
+static bool Snapshot_SelectOSKFilename() {
+  if (*Snapshot_GetFilename()) {
+    return true;
+  }
+
+  LPCTSTR diskPath = DiskGetFullName(0);
+
+  if (!diskPath || !*diskPath) {
+    diskPath = HD_GetImagePath(0);
+  }
+
+  if (!diskPath || !*diskPath) {
+    return false;
+  }
+
+  char filename[MAX_PATH];
+  strncpy(filename, diskPath, sizeof(filename) - 1);
+  filename[sizeof(filename) - 1] = '\0';
+
+  char *slash = strrchr(filename, '/');
+  char *backslash = strrchr(filename, '\\');
+  char *separator = slash;
+
+  if (backslash && (!separator || backslash > separator)) {
+    separator = backslash;
+  }
+
+  char *dot = strrchr(filename, '.');
+
+  if (dot && (!separator || dot > separator)) {
+    *dot = '\0';
+  }
+
+  if (strlen(filename) + 4 >= sizeof(filename)) {
+    return false;
+  }
+
+  strcat(filename, ".aws");
+  Snapshot_SetFilename(filename);
+
+  return true;
+}
+
+void Snapshot_OSKSaveState() {
+  if (Snapshot_SelectOSKFilename()) {
+    Snapshot_SaveState();
+  }
+}
+
+void Snapshot_OSKLoadState() {
+  if (Snapshot_SelectOSKFilename()) {
+    Snapshot_LoadState();
+  }
+}
+
 void Snapshot_Startup() {
   static bool bDone = false;
 

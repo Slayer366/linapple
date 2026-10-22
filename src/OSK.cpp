@@ -63,7 +63,7 @@ static SDL_Surface *g_OSKSpriteSheet = NULL;
 static SDL_Surface *g_OSKAlphaSheet = NULL;
 static const Uint8 g_OSKAlphaValues[] = { 190, 140, 255 };
 
-static const int OSK_SPRITE_COUNT = 66;
+static const int OSK_SPRITE_COUNT = 68;
 static const int OSK_SPRITE_HEIGHT = 28;
 
 static const int OSK_GAP = 2;
@@ -102,7 +102,7 @@ static void BuildKeyboard()
     return;
 
   /* ESC  1 2 3 4 5 6 7 8 9 0 - = DELETE */
-  AddKey(0, 0, 0, 0, "ESC", SDLK_ESCAPE, OSK_SPECIAL, 1);
+  AddKey(0, 0, 0, 0, "ESC", SDLK_ESCAPE, OSK_SPECIAL, 2);
 
   const char *row1[] =
   { "1","2","3","4","5","6","7","8","9","0","-","=" };
@@ -111,12 +111,12 @@ static void BuildKeyboard()
   { '1','2','3','4','5','6','7','8','9','0','-','=' };
 
   for (int i = 0; i < 12; i++) {
-    AddKey(0, 0, 0, 0, row1[i], row1keys[i], OSK_NORMAL, 1);
+    AddKey(0, 0, 0, 0, row1[i], row1keys[i], OSK_NORMAL, 2);
   }
-  AddKey(0, 0, 0, 0, "DELETE", SDLK_DELETE, OSK_SPECIAL, 1);
+  AddKey(0, 0, 0, 0, "DELETE", SDLK_DELETE, OSK_SPECIAL, 2);
 
   /* TAB Q W E R T Y U I O P [ ] \ */
-  AddKey(0, 0, 0, 0, "TAB", SDLK_TAB, OSK_SPECIAL, 2);
+  AddKey(0, 0, 0, 0, "TAB", SDLK_TAB, OSK_SPECIAL, 3);
 
   const char *row2[] =
   { "Q","W","E","R","T","Y","U","I","O","P","[","]","\\" };
@@ -125,11 +125,11 @@ static void BuildKeyboard()
   { 'q','w','e','r','t','y','u','i','o','p','[',']','\\' };
 
   for (int i = 0; i < 13; i++) {
-    AddKey(0, 0, 0, 0, row2[i], row2keys[i], OSK_NORMAL, 2);
+    AddKey(0, 0, 0, 0, row2[i], row2keys[i], OSK_NORMAL, 3);
   }
 
   /* CONTROL A S D F G H J K L ; ' RETURN */
-  AddKey(0, 0, 0, 0, "CONTROL", 0, OSK_CONTROL, 3);
+  AddKey(0, 0, 0, 0, "CONTROL", 0, OSK_CONTROL, 4);
 
   const char *row3[] =
   { "A","S","D","F","G","H","J","K","L",";", "'" };
@@ -138,12 +138,12 @@ static void BuildKeyboard()
   { 'a','s','d','f','g','h','j','k','l',';','\'' };
 
   for (int i = 0; i < 11; i++) {
-    AddKey(0, 0, 0, 0, row3[i], row3keys[i], OSK_NORMAL, 3);
+    AddKey(0, 0, 0, 0, row3[i], row3keys[i], OSK_NORMAL, 4);
   }
-  AddKey(0, 0, 0, 0, "RETURN", SDLK_RETURN, OSK_SPECIAL, 3);
+  AddKey(0, 0, 0, 0, "RETURN", SDLK_RETURN, OSK_SPECIAL, 4);
 
   /* SHIFT Z X C V B N M , . / SHIFT */
-  AddKey(0, 0, 0, 0, "SHIFT", 0, OSK_SHIFT, 4);
+  AddKey(0, 0, 0, 0, "SHIFT", 0, OSK_SHIFT, 5);
 
   const char *row4[] =
   { "Z","X","C","V","B","N","M",",",".","/" };
@@ -152,26 +152,28 @@ static void BuildKeyboard()
   { 'z','x','c','v','b','n','m',',','.','/' };
 
   for (int i = 0; i < 10; i++) {
-    AddKey(0, 0, 0, 0, row4[i], row4keys[i], OSK_NORMAL, 4);
+    AddKey(0, 0, 0, 0, row4[i], row4keys[i], OSK_NORMAL, 5);
   }
-  AddKey(0, 0, 0, 0, "SHIFT", 0, OSK_SHIFT, 4);
+  AddKey(0, 0, 0, 0, "SHIFT", 0, OSK_SHIFT, 5);
 
   /* CAPS, `~, -gap-, Open APPLE, Space, Closed APPLE, Left, Right, Down, Up */
-  AddKey(0, 0, 0, 0, "CAPS",   0,          OSK_CAPS,    5);
-  AddKey(0, 0, 0, 0, "`~",     '`',        OSK_NORMAL,  5);
-  AddKey(0, 0, 0, 0, "OPEN",   0,          OSK_APPLE,   5);
-  AddKey(0, 0, 0, 0, "SPACE",  ' ',        OSK_NORMAL,  5);
-  AddKey(0, 0, 0, 0, "CLOSED", 0,          OSK_APPLE,   5);
-  AddKey(0, 0, 0, 0, "LEFT",   SDLK_LEFT,  OSK_SPECIAL, 5);
-  AddKey(0, 0, 0, 0, "RIGHT",  SDLK_RIGHT, OSK_SPECIAL, 5);
-  AddKey(0, 0, 0, 0, "DOWN",   SDLK_DOWN,  OSK_SPECIAL, 5);
-  AddKey(0, 0, 0, 0, "UP",     SDLK_UP,    OSK_SPECIAL, 5);
+  AddKey(0, 0, 0, 0, "CAPS",   0,          OSK_CAPS,    6);
+  AddKey(0, 0, 0, 0, "`~",     '`',        OSK_NORMAL,  6);
+  AddKey(0, 0, 0, 0, "OPEN",   0,          OSK_APPLE,   6);
+  AddKey(0, 0, 0, 0, "SPACE",  ' ',        OSK_NORMAL,  6);
+  AddKey(0, 0, 0, 0, "CLOSED", 0,          OSK_APPLE,   6);
+  AddKey(0, 0, 0, 0, "LEFT",   SDLK_LEFT,  OSK_SPECIAL, 6);
+  AddKey(0, 0, 0, 0, "RIGHT",  SDLK_RIGHT, OSK_SPECIAL, 6);
+  AddKey(0, 0, 0, 0, "DOWN",   SDLK_DOWN,  OSK_SPECIAL, 6);
+  AddKey(0, 0, 0, 0, "UP",     SDLK_UP,    OSK_SPECIAL, 6);
 
   /* Emulator function buttons */
-  AddKey(0, 0, 0, 0, "Swap Drives",   0, OSK_FUNCTION, 0);
-  AddKey(0, 0, 0, 0, "Screenshot",    0, OSK_FUNCTION, 0);
-  AddKey(0, 0, 0, 0, "Quit LinApple", 0, OSK_FUNCTION, 0);
-  AddKey(0, 0, 0, 0, "OSK Alpha",     0, OSK_FUNCTION, 0);
+  AddKey(0, 0, 0, 0, "Swap Drives",   0, OSK_FUNCTION, 1);
+  AddKey(0, 0, 0, 0, "Screenshot",    0, OSK_FUNCTION, 1);
+  AddKey(0, 0, 0, 0, "Quit LinApple", 0, OSK_FUNCTION, 1);
+  AddKey(0, 0, 0, 0, "OSK Alpha",     0, OSK_FUNCTION, 1);
+  AddKey(0, 0, 0, 0, "Save State",    0, OSK_FUNCTION, 0);
+  AddKey(0, 0, 0, 0, "Load State",    0, OSK_FUNCTION, 0);
 }
 
 static const int g_OSKSpriteWidths[OSK_SPRITE_COUNT] =
@@ -241,7 +243,9 @@ static const int g_OSKSpriteWidths[OSK_SPRITE_COUNT] =
   102,  // Swap Drives
   102,  // Screenshot
   102,  // Quit LinApple
-  102   // OSK Alpha
+  102,  // OSK Alpha
+  102,  // Save State
+  102   // Load State
 };
 
 struct OSKSprite
@@ -331,8 +335,8 @@ static bool LoadOSKSpriteSheet()
 
   ApplyOSKAlpha();
 
-  if (g_OSKSpriteSheet->w != 2583 || g_OSKSpriteSheet->h != 30) {
-    fprintf(stderr, "OSK: Warning: sprite sheet is %dx%d, expected 2583x30\n",
+  if (g_OSKSpriteSheet->w != 2789 || g_OSKSpriteSheet->h != 30) {
+    fprintf(stderr, "OSK: Warning: sprite sheet is %dx%d, expected 2789x30\n",
             g_OSKSpriteSheet->w, g_OSKSpriteSheet->h);
   }
 
@@ -387,34 +391,46 @@ static void LayoutKeyboard(int screenWidth, int screenHeight)
   const int rowHeight = OSK_SPRITE_HEIGHT;
 
   const int totalHeight =
-      rowHeight * 6 +
-      OSK_ROW_GAP * 5;
+      rowHeight * 7 +
+      OSK_ROW_GAP * 6;
 
+  /* Calculation for keyboard and starting row */
   int y = (screenHeight - totalHeight) / 2 + OSK_Y_BIAS;
 
-  /* Function buttons */
+  /* Save State and Load State buttons */
+  LayoutRow(66, 67, y, screenWidth, -1);
+
+  /* Calculate spacing to set up ROW 2 */
+  y += rowHeight + OSK_ROW_GAP;
+
+  /* Swap Drives, Screenshot, Quit LinApple, OSK Alpha */
   LayoutRow(62, 65, y, screenWidth, -1);
 
+  /* Calculate spacing to set up ROW 3 */
   y += rowHeight + OSK_ROW_GAP;
 
   /* ESC ... DELETE */
   LayoutRow(0, 13, y, screenWidth, -1);
 
+  /* Calculate spacing to set up ROW 4 */
   y += rowHeight + OSK_ROW_GAP;
 
   /* TAB ... \ */
   LayoutRow(14, 27, y, screenWidth, -1);
 
+  /* Calculate spacing to set up ROW 5 */
   y += rowHeight + OSK_ROW_GAP;
 
   /* CONTROL ... RETURN */
   LayoutRow(28, 40, y, screenWidth, -1);
 
+  /* Calculate spacing to set up ROW 6 */
   y += rowHeight + OSK_ROW_GAP;
 
   /* LSHIFT ... RSHIFT */
   LayoutRow(41, 52, y, screenWidth, -1);
 
+  /* Calculate spacing to set up ROW 7 */
   y += rowHeight + OSK_ROW_GAP;
 
   /* CAPS ... UP */
@@ -641,6 +657,18 @@ static void ActivateSelected()
         g_OSKAlphaMode = 0;
 
       ApplyOSKAlpha();
+    }
+    else if (key.label && !strcmp(key.label, "Save State"))
+    {
+      g_bOSKVisible = false;
+      OSK_CloseJoystick();
+      Snapshot_OSKSaveState();
+    }
+    else if (key.label && !strcmp(key.label, "Load State"))
+    {
+      g_bOSKVisible = false;
+      OSK_CloseJoystick();
+      Snapshot_OSKLoadState();
     }
 
     return;

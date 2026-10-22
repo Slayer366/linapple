@@ -127,6 +127,7 @@ char Hddrvr_dat[] = "\xA9\x20\xA9\x00\xA9\x03\xA9\x3C\xA9\x00\x8D\xF2\xC0\xA9\x7
 typedef struct {
   char hd_imagename[16];
   char hd_fullname[128];
+  char hd_imagepath[MAX_PATH];
   unsigned char hd_error;
   unsigned short hd_memblock;
   unsigned short hd_diskblock;
@@ -231,6 +232,7 @@ static void HD_CleanupDrive(int nDrive)
   g_HardDrive[nDrive].hd_read_only = false;
   g_HardDrive[nDrive].hd_imagename[0] = 0;
   g_HardDrive[nDrive].hd_fullname[0] = 0;
+  g_HardDrive[nDrive].hd_imagepath[0] = 0;
 }
 
 static unsigned int ReadLE32(const unsigned char *p)
@@ -351,6 +353,13 @@ LPCTSTR HD_GetFullName(int nDrive) {
   return g_HardDrive[nDrive].hd_fullname;
 }
 
+LPCTSTR HD_GetImagePath(int nDrive) {
+  if (nDrive < 0 || nDrive >= 2)
+    return "";
+
+  return g_HardDrive[nDrive].hd_imagepath;
+}
+
 void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot) {
   if (!g_bHD_Enabled)
     return;
@@ -401,6 +410,8 @@ bool HD_InsertDisk(int nDrive, LPCTSTR imageFileName) {
 
   if (result) {
     GetImageTitle(imageFileName, &g_HardDrive[nDrive]);
+    strncpy(g_HardDrive[nDrive].hd_imagepath, imageFileName, MAX_PATH - 1);
+    g_HardDrive[nDrive].hd_imagepath[MAX_PATH - 1] = 0;
   } else {
     NotifyInvalidImage((char *) imageFileName);  // could not load hd image
   }
