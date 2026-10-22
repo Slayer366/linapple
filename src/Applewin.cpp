@@ -763,7 +763,7 @@ void LoadConfiguration()
 
   if (registry) {
     if (RegLoadString(TEXT("Configuration"), TEXT(REGVALUE_SAVESTATE_FILENAME), 1, &szFilename, MAX_PATH)) {
-      Snapshot_SetFilename(szFilename);  // If not in Registry than default will be used
+      Snapshot_SetFilename(szFilename);  // If not in Registry then default will be used
       free(szFilename);
       szFilename = NULL;
     }
@@ -1013,20 +1013,21 @@ void PrintHelp()
          "\n"
          "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
          "\n"
-         "  -h|--help      show this help message\n"
-         "  --conf <file>  use <file> instead of any default config files\n"
-         "  --d1 <file>    insert disk image into first drive\n"
-         "  --d2 <file>    insert disk image into second drive\n"
-         "  --hd1 <file>   mount hard disk image as first HDD\n"
-         "  --hd2 <file>   mount hard disk image as second HDD\n"
-         "  --ser <file>   serial port to use and map on slot2\n"
-         "  -b|--autoboot  boot/reset at startup\n"
-         "  -f             run fullscreen\n"
-         "  -l             write log to 'AppleWin.log'\n"
+         "  -h | --help      show this help message\n"
+         "  --conf <file>    use <file> instead of any default config files\n"
+         "  --d1 <file>      insert disk image into first drive\n"
+         "  --d2 <file>      insert disk image into second drive\n"
+         "  --hd1 <file>     mount hard disk image as first HDD\n"
+         "  --hd2 <file>     mount hard disk image as second HDD\n"
+         "  --ser <file>     serial port to use and map on slot2\n"
+         "  --state <file>   use savestate <file> for Alt+F11 (save) and Alt+F10 (load)\n"
+         "  -b | --autoboot  boot/reset at startup\n"
+         "  -f               run fullscreen\n"
+         "  -l               write log to 'AppleWin.log'\n"
          #ifdef RAMWORKS
-         "  -r PAGES       allocate PAGES to Ramworks (1-127)\n"
+         "  -r PAGES         allocate PAGES to Ramworks (1-127)\n"
          #endif
-         "  --benchmark    benchmark and quit\n"
+         "  --benchmark      benchmark and quit\n"
          "\n");
 }
 
