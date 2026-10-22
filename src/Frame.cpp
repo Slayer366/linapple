@@ -1252,7 +1252,7 @@ void ProcessButtonClick(int button, int mod)
         }
       }
       break;
-    case BTN_QUIT:  // F10 - exit from emulator?
+    case BTN_QUIT:  // F12 - exit from emulator?
       qe.type = SDL_QUIT;
       SDL_PushEvent(&qe); // Push quit event
       break;  //
