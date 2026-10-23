@@ -63,7 +63,7 @@ static bool g_OSKOwnsJoystick = false;
 
 static SDL_Surface *g_OSKSpriteSheet = NULL;
 static SDL_Surface *g_OSKAlphaSheet = NULL;
-static const Uint8 g_OSKAlphaValues[] = { 190, 140, 255 };
+static const Uint8 g_OSKAlphaValues[] = { 255, 190, 140 };
 
 static const int OSK_SPRITE_COUNT = 68;
 static const int OSK_SPRITE_HEIGHT = 28;
@@ -669,13 +669,13 @@ static void ActivateSelected()
     {
       g_bOSKVisible = false;
       OSK_CloseJoystick();
-      Snapshot_OSKSaveState();
+      Snapshot_SaveState();
     }
     else if (key.label && !strcmp(key.label, "Load State"))
     {
       g_bOSKVisible = false;
       OSK_CloseJoystick();
-      Snapshot_OSKLoadState();
+      Snapshot_LoadState();
     }
 
     return;
@@ -986,6 +986,12 @@ bool OSK_HandleEvent(SDL_Event *event)
 
     case SDL_CONTROLLERBUTTONDOWN:
     {
+      if (event->cbutton.button == SDL_CONTROLLER_BUTTON_BACK)
+      {
+        g_bOSKVisible = false;
+        OSK_CloseJoystick();
+        return true;
+      }
       if (event->cbutton.button == SDL_CONTROLLER_BUTTON_A ||
           event->cbutton.button == SDL_CONTROLLER_BUTTON_B ||
           event->cbutton.button == SDL_CONTROLLER_BUTTON_X ||
