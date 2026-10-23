@@ -485,6 +485,16 @@ static void MoveHorizontal(int direction)
         break;
       }
     }
+
+    // Wrap to the rightmost key in this row.
+    if (best < 0) {
+      for (int i = g_keyCount - 1; i >= 0; i--) {
+        if (g_keys[i].row == row) {
+          best = i;
+          break;
+        }
+      }
+    }
   }
   else
   {
@@ -493,6 +503,16 @@ static void MoveHorizontal(int direction)
       if (g_keys[i].row == row) {
         best = i;
         break;
+      }
+    }
+
+    // Wrap to the leftmost key in this row.
+    if (best < 0) {
+      for (int i = 0; i < g_keyCount; i++) {
+        if (g_keys[i].row == row) {
+          best = i;
+          break;
+        }
       }
     }
   }
@@ -509,10 +529,13 @@ static void MoveVertical(int direction)
   }
 
   const int currentRow = g_keys[g_selected].row;
-  const int targetRow = currentRow + direction;
+  int targetRow = currentRow + direction;
 
   if (targetRow < 0) {
-    return;
+    targetRow = 6;  // Wrap from the top row to the bottom.
+  }
+  else if (targetRow > 6) {
+    targetRow = 0;  // Wrap from the bottom row to the top.
   }
 
   int currentCenter = g_keys[g_selected].x + g_keys[g_selected].w / 2;
