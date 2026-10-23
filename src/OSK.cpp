@@ -2,6 +2,7 @@
 
 #include <unistd.h>
 #include "stdafx.h"
+#include "osk_png.h"
 
 /* Key types */
 enum
@@ -57,7 +58,8 @@ static int g_OSKDPadRight = -1;
 
 static bool g_OSKOwnsJoystick = false;
 
-static const char *OSK_SPRITE_SHEET = "res/osk.png";
+// osk.png is now embedded into the binary
+//static const char *OSK_SPRITE_SHEET = "res/osk.png";
 
 static SDL_Surface *g_OSKSpriteSheet = NULL;
 static SDL_Surface *g_OSKAlphaSheet = NULL;
@@ -325,11 +327,16 @@ static bool LoadOSKSpriteSheet()
   }
 
   BuildSpriteInfo();
-  g_OSKSpriteSheet = IMG_Load(OSK_SPRITE_SHEET);
+//  g_OSKSpriteSheet = IMG_Load(OSK_SPRITE_SHEET);
+  SDL_RWops *rw = SDL_RWFromConstMem((const char *)osk_png, sizeof(osk_png));
+  g_OSKSpriteSheet = rw ? IMG_Load_RW(rw, 1) : NULL;
 
   if (!g_OSKSpriteSheet) {
-    fprintf(stderr, "OSK: Couldn't load sprite sheet %s: %s\n", OSK_SPRITE_SHEET, SDL_GetError());
-    SDL_Quit();
+//    fprintf(stderr, "OSK: Couldn't load sprite sheet: %s \n%s\n", OSK_SPRITE_SHEET, SDL_GetError());
+    fprintf(stderr, "OSK: Couldn't load embedded sprite sheet \n%s\n", SDL_GetError());
+     SDL_Event err_event;
+    err_event.type = SDL_QUIT;
+    SDL_PushEvent(&err_event);
     return false;
   }
 
@@ -647,7 +654,7 @@ static void ActivateSelected()
     else if (key.label && !strcmp(key.label, "Quit LinApple"))
     {
       event.type = SDL_QUIT;
-      SDL_PushEvent(&event);            
+      SDL_PushEvent(&event);
     }
     else if (key.label && !strcmp(key.label, "OSK Alpha"))
     {

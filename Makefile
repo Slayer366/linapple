@@ -40,7 +40,7 @@ SYMEXT      := SYM
 
 BUILDDIR    := build/$(OBJDIR)
 TARGETDIR   := build/$(BINDIR)
-OSKPNG      := $(TARGETDIR)/res/osk.png
+OSKPNG_HEADER := $(BUILDDIR)/osk_png.h
 
 #Flags, Libraries and Includes
 
@@ -90,8 +90,8 @@ LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -lGLESv2 -pthread
 else
 LIB    := $(SDL_LIBS) $(CURL_LIBS) -lz -lzip -pthread -lX11
 endif
-INC    := -I$(INCDIR) -I/usr/local/include
-INCDEP := -I$(INCDIR)
+INC    := -I$(INCDIR) -I$(BUILDDIR) -I/usr/local/include
+INCDEP := -I$(INCDIR) -I$(BUILDDIR)
 
 # Check if user has compiled the source
 define COMPILED
@@ -145,12 +145,13 @@ export CONTROL
 #-------------------------------------------------------------------------------
 SOURCES := $(shell find $(SRCDIR) -type f -name *.$(SRCEXT))
 OBJECTS := $(patsubst $(SRCDIR)/%,$(BUILDDIR)/%,$(SOURCES:.$(SRCEXT)=.$(OBJEXT)))
-SRCIMGS := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
+#SRCIMGS := $(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT)))
+SRCIMGS := $(filter-out $(RESDIR)/osk.png,$(foreach dir,$(RESDIR),$(wildcard $(dir)/*.$(IMGEXT))))
 DSTIMGS := $(patsubst $(RESDIR)/%,$(BUILDDIR)/%,$(SRCIMGS:.$(IMGEXT)=.$(XPMEXT)))
 SRCSYMS := $(wildcard $(RESDIR)/*.$(SYMEXT))
 DSTSYMS := $(patsubst $(RESDIR)/%,$(TARGETDIR)/%,$(SRCSYMS))
 
-all: resources $(TARGETDIR)/$(TARGET) symbolfiles $(OSKPNG)
+all: resources $(TARGETDIR)/$(TARGET) symbolfiles
 
 remake: distclean all
 
@@ -189,9 +190,11 @@ distclean: clean
 $(TARGETDIR)/$(TARGET): $(OBJECTS)
 	$(CC) $(LFLAGS) -o $(TARGETDIR)/$(TARGET) $^ $(LIB)
 
-$(OSKPNG): $(RESDIR)/osk.png
+$(OSKPNG_HEADER): $(RESDIR)/osk.png res/embed_png.py
 	@mkdir -p $(dir $@)
-	@cp $< $@
+	python3 res/embed_png.py $< $@
+
+$(BUILDDIR)/OSK.$(OBJEXT): $(OSKPNG_HEADER)
 
 #Compile
 $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
