@@ -141,10 +141,10 @@ int Asset_FindMasterDisk(char *path_out)
   // TODO the last ditch paths are bunk -- look for better conventions.
 
   int err = 255;
-  const int count = 5;
+  const int count = 8;
   char *paths[count];
   char path[MAX_PATH+1];
-  
+
   // Allocate.
   for (int i=0; i<count; i++)
     paths[i] = (char *)SDL_malloc(sizeof(char[PATH_MAX+1]));
@@ -152,10 +152,13 @@ int Asset_FindMasterDisk(char *path_out)
   // Define search paths in precedence order.
   strcpy(paths[0], ".");
   strcpy(paths[1], "share/linapple"); // testing convenience
-  strcpy(paths[2], SDL_getenv("HOME"));
-  strcat(paths[2], "/.local/share/linapple");
-  strcpy(paths[3], "/usr/local/share/linapple");
-  strcpy(paths[4], "/usr/share/linapple");
+  strcpy(paths[2], "build/share/linapple"); // testing convenience
+  strcpy(paths[3], "../share/linapple"); // testing convenience
+  strcpy(paths[4], SDL_getenv("HOME"));
+  strcat(paths[4], "/.local/share/linapple");
+  strcpy(paths[5], "/usr/local/share/linapple");
+  strcpy(paths[6], "/usr/share/linapple");
+  strcpy(paths[7], "/opt/linapple"); // ArkOS, dArkOS
 
   for (auto p: paths) {
     sprintf(path, "%s/%s", p, ASSET_MASTER_DSK);
