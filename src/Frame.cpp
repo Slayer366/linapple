@@ -454,6 +454,32 @@ void FramePresentGL(SDL_Surface *frame)
 #undef glDrawArrays
 #undef glDisableVertexAttribArray
 #undef glDeleteTextures
+
+
+// This section for toggling the OSK using
+// the 'Select/Back' button on a controller
+// that may happen to produce multiple inputs
+
+static Uint32 s_OSKLastToggleTime = 0;
+static int s_OSKLastToggleSource = 0;
+
+static bool FrameOSKToggleAllowed(int source)
+{
+  Uint32 now = SDL_GetTicks();
+
+  if (s_OSKLastToggleSource != 0 &&
+      source != s_OSKLastToggleSource &&
+      (Uint32)(now - s_OSKLastToggleTime) < 250)
+  {
+    // Consume the paired event from the same physical input.
+    s_OSKLastToggleSource = 0;
+    return false;
+  }
+
+  s_OSKLastToggleTime = now;
+  s_OSKLastToggleSource = source;
+  return true;
+}
 #endif
 
 SDL_Surface *apple_icon;
@@ -718,7 +744,50 @@ static int sdl2windowflags;
 
 void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 
-  // OSK will be invoked using 'Esc' for now
+#ifdef SDL2
+  if (OSK_IsVisible() && e->type != SDL_QUIT)
+  {
+    if (e->type == SDL_KEYDOWN &&
+        e->key.keysym.sym == SDLK_ESCAPE)
+    {
+      if (!e->key.repeat && FrameOSKToggleAllowed(1))
+        OSK_Toggle();
+      return;
+    }
+
+    if (e->type == SDL_CONTROLLERBUTTONDOWN &&
+        e->cbutton.button == SDL_CONTROLLER_BUTTON_BACK)
+    {
+      if (FrameOSKToggleAllowed(2))
+        OSK_Toggle();
+      return;
+    }
+
+    OSK_HandleEvent(e);
+    return;
+  }
+
+  // Escape or controller Select/Back opens OSK if hidden
+  if (e->type == SDL_CONTROLLERBUTTONDOWN &&
+      e->cbutton.button == SDL_CONTROLLER_BUTTON_BACK)
+  {
+    if (g_nAppMode != MODE_LOGO && FrameOSKToggleAllowed(2))
+      OSK_Toggle();
+    return;
+  }
+
+  if (e->type == SDL_KEYDOWN &&
+      e->key.keysym.sym == SDLK_ESCAPE)
+  {
+    if (e->key.repeat)
+      return;
+
+    if (g_nAppMode != MODE_LOGO && FrameOSKToggleAllowed(1))
+      OSK_Toggle();
+    return;
+  }
+#else
+  // OSK will be invoked using only 'Esc' for SDL1
   if (OSK_IsVisible() && e->type != SDL_QUIT)
   {
     OSK_HandleEvent(e);
@@ -733,6 +802,7 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
     OSK_Show();
     return;
   }
+#endif
 
   int mysym = e->key.keysym.sym; // keycode
   int mymod = e->key.keysym.mod; // some special keys flags
