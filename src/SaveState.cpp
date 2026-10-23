@@ -42,10 +42,79 @@ char *Snapshot_GetFilename() {
 }
 
 void Snapshot_SetFilename(const char *pszFilename) {
-  if (*pszFilename)
-    strcpy(g_szSaveStateFilename, (const char *) pszFilename);
+//  if (*pszFilename)
+//    strcpy(g_szSaveStateFilename, (const char *) pszFilename);
+//  else
+//    strcpy(g_szSaveStateFilename, DEFAULT_SNAPSHOT_NAME);
+
+  if (pszFilename && *pszFilename)
+    strncpy(g_szSaveStateFilename, pszFilename, sizeof(g_szSaveStateFilename) - 1);
   else
-    strcpy(g_szSaveStateFilename, DEFAULT_SNAPSHOT_NAME);
+    g_szSaveStateFilename[0] = '\0';
+
+  g_szSaveStateFilename[sizeof(g_szSaveStateFilename) - 1] = '\0';
+}
+
+static const char *Snapshot_ResolveFilename(char *filename,
+                                            size_t filenameSize)
+{
+  // An explicitly configured filename always takes priority.
+  if (*g_szSaveStateFilename) {
+    return g_szSaveStateFilename;
+  }
+
+  // Otherwise, derive the filename from the mounted image.
+  LPCTSTR diskPath = DiskGetFullName(0);
+
+  // Ignore the automatically mounted Master.dsk
+  if (diskPath && *diskPath)
+  {
+    const char *base = strrchr(diskPath, '/');
+    const char *backslash = strrchr(diskPath, '\\');
+
+    if (backslash && (!base || backslash > base)) {
+      base = backslash;
+    }
+
+    base = base ? base + 1 : diskPath;
+
+    if (strcasecmp(base, "Master.dsk") == 0) {
+      diskPath = NULL;
+    }
+  }
+
+  if (!diskPath || !*diskPath) {
+    diskPath = HD_GetImagePath(0);
+  }
+
+  if (diskPath && *diskPath) {
+    strncpy(filename, diskPath, filenameSize - 1);
+    filename[filenameSize - 1] = '\0';
+
+    char *slash = strrchr(filename, '/');
+    char *backslash = strrchr(filename, '\\');
+    char *separator = slash;
+
+    if (backslash && (!separator || backslash > separator)) {
+      separator = backslash;
+    }
+
+    char *dot = strrchr(filename, '.');
+
+    if (dot && (!separator || dot > separator)) {
+      *dot = '\0';
+    }
+
+    size_t len = strlen(filename);
+
+    if (len + 4 < filenameSize) {
+      strcat(filename, ".aws");
+      return filename;
+    }
+  }
+
+  // Last resort: no explicit filename and no usable image path.
+  return DEFAULT_SNAPSHOT_NAME;
 }
 
 void Snapshot_LoadState() {
@@ -59,11 +128,17 @@ void Snapshot_LoadState() {
       throw (0);
 
     memset(pSS, 0, sizeof(APPLEWIN_SNAPSHOT));
-    HANDLE hFile = (FILE *) fopen(g_szSaveStateFilename, "rb");
+
+    char filename[MAX_PATH];
+    const char *pszFilename = Snapshot_ResolveFilename(filename, sizeof(filename));
+
+//    HANDLE hFile = (FILE *) fopen(g_szSaveStateFilename, "rb");
+    HANDLE hFile = (FILE *) fopen(pszFilename, "rb");
 
     if (hFile == INVALID_HANDLE_VALUE) {
       strcpy(szMessage, "File not found: ");
-      strcpy(szMessage + strlen(szMessage), g_szSaveStateFilename);
+//      strcpy(szMessage + strlen(szMessage), g_szSaveStateFilename);
+      strcpy(szMessage + strlen(szMessage), pszFilename);
       throw (0);
     }
 
@@ -178,7 +253,11 @@ void Snapshot_SaveState() {
   // Slot6: Disk][
   DiskGetSnapshot(&pSS->Disk2, 6);
 
-  HANDLE hFile = fopen(g_szSaveStateFilename, "wb");
+  char filename[MAX_PATH];
+  const char *pszFilename = Snapshot_ResolveFilename(filename, sizeof(filename));
+
+//  HANDLE hFile = fopen(g_szSaveStateFilename, "wb");
+  HANDLE hFile = fopen(pszFilename, "wb");
 
   if (hFile != INVALID_HANDLE_VALUE) {
     unsigned int dwBytesWritten;
@@ -187,61 +266,6 @@ void Snapshot_SaveState() {
   }
 
   delete[] pSS;
-}
-
-static bool Snapshot_SelectOSKFilename() {
-  if (*Snapshot_GetFilename()) {
-    return true;
-  }
-
-  LPCTSTR diskPath = DiskGetFullName(0);
-
-  if (!diskPath || !*diskPath) {
-    diskPath = HD_GetImagePath(0);
-  }
-
-  if (!diskPath || !*diskPath) {
-    return false;
-  }
-
-  char filename[MAX_PATH];
-  strncpy(filename, diskPath, sizeof(filename) - 1);
-  filename[sizeof(filename) - 1] = '\0';
-
-  char *slash = strrchr(filename, '/');
-  char *backslash = strrchr(filename, '\\');
-  char *separator = slash;
-
-  if (backslash && (!separator || backslash > separator)) {
-    separator = backslash;
-  }
-
-  char *dot = strrchr(filename, '.');
-
-  if (dot && (!separator || dot > separator)) {
-    *dot = '\0';
-  }
-
-  if (strlen(filename) + 4 >= sizeof(filename)) {
-    return false;
-  }
-
-  strcat(filename, ".aws");
-  Snapshot_SetFilename(filename);
-
-  return true;
-}
-
-void Snapshot_OSKSaveState() {
-  if (Snapshot_SelectOSKFilename()) {
-    Snapshot_SaveState();
-  }
-}
-
-void Snapshot_OSKLoadState() {
-  if (Snapshot_SelectOSKFilename()) {
-    Snapshot_LoadState();
-  }
 }
 
 void Snapshot_Startup() {
