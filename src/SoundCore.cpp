@@ -158,24 +158,23 @@ bool SDLSoundDriverInit(unsigned wantedFreq, unsigned wantedSamples) {
   frequency = audioSpec.freq;
 
   unsigned bufferSize;
-  unsigned bufferIdxMask;
+//  unsigned bufferIdxMask;
   bufferSize = 8 * (audioSpec.size / sizeof(short));
   // GPH NOTE: bufferSize needs to be power of 2 for quick
   // modulus division (e.g. &)... Other, expensive division (div instruction) is required,
   // and because of the high volume of work against mixBuffer and mockBuffer, that is
   // undesirable.
-  bufferIdxMask = bufferSize - 1;
-  printf("bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
+//  bufferIdxMask = bufferSize - 1;
+//  printf("bufferSize=%08x bufferIdxMask=%08x\n", bufferSize, bufferIdxMask);
 
   mix_buffer = new sample_buffer(bufferSize);  // buffer for Apple2 speakers
   mock_buffer = new sample_buffer(bufferSize);  // buffer for Mockingboard
   speech_buffer = new sample_buffer(bufferSize);  // buffer for SSI263 speech
 
   reInit();
-  printf("SDL_MIX_MAXVOLUME=%d\n", SDL_MIX_MAXVOLUME);
-  printf("Freq=%d,format=%d,channels=%d,silence=%d\n", audioSpec.freq, audioSpec.format, audioSpec.channels,
-         audioSpec.silence);
-  printf("samples=%d,size=%d,bufferSize=%d\n", audioSpec.samples, audioSpec.size, bufferSize);
+//  printf("SDL_MIX_MAXVOLUME=%d\n", SDL_MIX_MAXVOLUME);
+//  printf("Freq=%d,format=%d,channels=%d,silence=%d\n", audioSpec.freq, audioSpec.format, audioSpec.channels, audioSpec.silence);
+//  printf("samples=%d,size=%d,bufferSize=%d\n", audioSpec.samples, audioSpec.size, bufferSize);
 
   return true;
 }
