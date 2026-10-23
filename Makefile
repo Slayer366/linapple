@@ -9,6 +9,15 @@ VERSION     := 2.3.0
 #Compiler and Linker
 CC          := g++
 
+# Build output (use make V=1 for full commands)
+ifeq ($(V),1)
+Q :=
+STATUS =
+else
+Q := @
+STATUS = @if [ -t 1 ]; then printf '\033[36m  %-8s\033[0m %s\n' "$(1)" "$(2)"; else printf '  %-8s %s\n' "$(1)" "$(2)"; fi
+endif
+
 # Where does this get installed
 PREFIX      ?= /usr/local
 DESTDIR     ?= $(PREFIX)
@@ -192,14 +201,16 @@ $(TARGETDIR)/$(TARGET): $(OBJECTS)
 
 $(OSKPNG_HEADER): $(RESDIR)/osk.png res/embed_png.py
 	@mkdir -p $(dir $@)
-	python3 res/embed_png.py $< $@
+	$(call STATUS,RESOURCE,$<)
+	$(Q)python3 res/embed_png.py $< $@
 
 $(BUILDDIR)/OSK.$(OBJEXT): $(OSKPNG_HEADER)
 
 #Compile
 $(BUILDDIR)/%.$(OBJEXT): $(SRCDIR)/%.$(SRCEXT)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(INC) -c -o $@ $<
+	@printf '  CXX      %s\n' '$<'
+	$(Q)$(CC) $(CFLAGS) $(INC) -c -o $@ $<
 	@$(CC) $(CFLAGS) $(INCDEP) -MM $(SRCDIR)/$*.$(SRCEXT) > $(BUILDDIR)/$*.$(DEPEXT)
 	@cp -f $(BUILDDIR)/$*.$(DEPEXT) $(BUILDDIR)/$*.$(DEPEXT).tmp
 	@sed -e 's|.*:|$(BUILDDIR)/$*.$(OBJEXT):|' < $(BUILDDIR)/$*.$(DEPEXT).tmp > $(BUILDDIR)/$*.$(DEPEXT)
