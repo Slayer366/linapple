@@ -58,6 +58,7 @@ By Mark Ormond.
 #include <getopt.h>
 
 #include "asset.h"
+#include "StartupChooser.h"
 
 #ifdef __APPLE__
 #include "AlertHooks.h"
@@ -1013,21 +1014,22 @@ void PrintHelp()
          "\n"
          "LinApple is an emulator for Apple ][, Apple ][+, Apple //e, and Enhanced Apple //e computers.\n"
          "\n"
-         "  -h | --help      show this help message\n"
-         "  --conf <file>    use <file> instead of any default config files\n"
-         "  --d1 <file>      insert disk image into first drive\n"
-         "  --d2 <file>      insert disk image into second drive\n"
-         "  --hd1 <file>     mount hard disk image as first HDD\n"
-         "  --hd2 <file>     mount hard disk image as second HDD\n"
-         "  --ser <file>     serial port to use and map on slot2\n"
-         "  --state <file>   use savestate <file> for Alt+F11 (save) and Alt+F10 (load)\n"
-         "  -b | --autoboot  boot/reset at startup\n"
-         "  -f               run fullscreen\n"
-         "  -l               write log to 'AppleWin.log'\n"
+         "  -h | --help       show this help message\n"
+         "  --conf <file>     use <file> instead of any default config files\n"
+         "  --d1 <file>       insert disk image into first drive\n"
+         "  --d2 <file>       insert disk image into second drive\n"
+         "  --hd1 <file>      mount hard disk image as first HDD\n"
+         "  --hd2 <file>      mount hard disk image as second HDD\n"
+         "  --ser <file>      serial port to use and map on slot2\n"
+         "  --state <file>    use savestate <file> for Alt+F11 (save) and Alt+F10 (load)\n"
+         "  --chooser <path>  set path to launch and use ez-image browser\n"
+         "  -b | --autoboot   boot/reset at startup\n"
+         "  -f                run fullscreen\n"
+         "  -l                write log to 'AppleWin.log'\n"
          #ifdef RAMWORKS
-         "  -r PAGES         allocate PAGES to Ramworks (1-127)\n"
+         "  -r PAGES          allocate PAGES to Ramworks (1-127)\n"
          #endif
-         "  --benchmark      benchmark and quit\n"
+         "  --benchmark       benchmark and quit\n"
          "\n");
 }
 
@@ -1042,6 +1044,8 @@ int main(int argc, char *argv[])
   LPSTR szImageName_drive2 = NULL;
   LPSTR szImageName_hd1 = NULL;
   LPSTR szImageName_hd2 = NULL;
+  const char* szChooserPath = NULL;
+  bool bStartupChooserQuit = false;
   LPSTR szSnapshotFile = NULL;
 // colinleroy - Basic fix for serial emulation
   LPSTR szSerialFile = NULL;
@@ -1060,6 +1064,7 @@ int main(int argc, char *argv[])
                                      {"help",     0,                 0, 0},
                                      {"state",    required_argument, 0, 0},
                                      {"benchmark",no_argument,       0, 0},
+                                     {"chooser",  required_argument, 0, 0},
                                      {0,          0,                 0, 0}};
 
 #ifdef SDL2
@@ -1113,6 +1118,8 @@ int main(int argc, char *argv[])
           bBoot = true;
         } else if (!strcmp(optname, "benchmark")) {
           bBenchMark = true;
+        } else if (!strcmp(optname, "chooser")) {
+          szChooserPath = optarg;
         } else if (!strcmp(optname, "conf")) {
           szConfigurationFile = optarg;
         } else if (!strcmp(optname, "d1")) {
@@ -1204,6 +1211,22 @@ int main(int argc, char *argv[])
 
     // autoboot
     bBoot = true;
+  }
+
+  std::string chooserDirectory;
+  if (szChooserPath) {
+    struct stat chooserStat;
+    if (stat(szChooserPath, &chooserStat) != 0 ||
+        (!S_ISDIR(chooserStat.st_mode) && !S_ISREG(chooserStat.st_mode))) {
+      fprintf(stderr, "Error: --chooser path does not exist or is not a regular file/directory: '%s'.\n", szChooserPath);
+      return 255;
+    }
+    if (S_ISDIR(chooserStat.st_mode)) chooserDirectory = szChooserPath;
+    else {
+      std::string filePath(szChooserPath);
+      std::string::size_type slash = filePath.find_last_of('/');
+      chooserDirectory = slash == std::string::npos ? "." : (slash == 0 ? "/" : filePath.substr(0, slash));
+    }
   }
 
   if (bLog) {
@@ -1328,7 +1351,7 @@ int main(int argc, char *argv[])
     }
 
     //Automatically boot from disk if specified on the command line
-    if (bBoot) {
+    if (bBoot && !szChooserPath) {
       setAutoBoot();
     }
 
@@ -1348,7 +1371,14 @@ int main(int argc, char *argv[])
     if (bBenchMark) {
       VideoBenchmark(); // start VideoBenchmark and exit
     } else {
-      EnterMessageLoop();  // else we just start game
+      if (szChooserPath) {
+        if (!ChooserRun(chooserDirectory))
+          bStartupChooserQuit = true;
+        else
+          setAutoBoot();
+      }
+      if (!bStartupChooserQuit)
+        EnterMessageLoop();  // else we just start game
     }
 
     Snapshot_Shutdown();
