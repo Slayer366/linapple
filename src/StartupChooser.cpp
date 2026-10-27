@@ -534,6 +534,116 @@ bool browseForDrive(const ChooserBackground& background, std::string& directory,
     const size_t visibleRows = browserVisibleRows();
     size_t first = selected >= visibleRows ? selected - visibleRows + 1 : 0;
 
+#ifdef SDL2
+    Uint32 nextScrollTime = 0;
+    const Uint32 INITIAL_DELAY = 300;
+    const Uint32 REPEAT_RATE = 60;
+
+    for (;;) {
+      drawBrowser(background, directory, driveLabel, entries, selected, first);
+      const Uint8* state = SDL_GetKeyboardState(NULL);
+
+      if (state[SDL_SCANCODE_UP] || state[SDL_SCANCODE_DOWN] || 
+          state[SDL_SCANCODE_LEFT] || state[SDL_SCANCODE_RIGHT]) {
+          
+          Uint32 now = SDL_GetTicks();
+          if (nextScrollTime == 0) {
+              nextScrollTime = now + INITIAL_DELAY;
+          } else if (now >= nextScrollTime) {
+              if (state[SDL_SCANCODE_UP] || state[SDL_SCANCODE_LEFT]) {
+                  if (selected > 0) --selected;
+              } else if (state[SDL_SCANCODE_DOWN] || state[SDL_SCANCODE_RIGHT]) {
+                  if (selected + 1 < entries.size()) ++selected;
+              }
+              // Keep list aligned during repeats
+              if (selected < first) {
+                first = selected;
+              }
+              else if (selected >= first + visibleRows) {
+                first = selected - visibleRows + 1;
+              }
+              nextScrollTime = now + REPEAT_RATE;
+          }
+      } else {
+          nextScrollTime = 0; // Reset when keys are released
+      }
+
+      SDL_Event event;
+      bool gotKey = false;
+      Uint32 checkTimeout = (nextScrollTime != 0) ? 0 : 10; 
+
+      while (!gotKey) {
+        SDL_Delay(checkTimeout);
+        while (SDL_PollEvent(&event)) {
+          if (event.type == SDL_QUIT) {
+            return false;
+          }
+          if (event.type == SDL_KEYDOWN) {
+            gotKey = true;
+            break;
+          }
+        }
+        if (nextScrollTime != 0 && SDL_GetTicks() >= nextScrollTime) {
+            break; 
+        }
+      }
+
+      if (gotKey) {
+        const SDL_Keycode key = event.key.keysym.sym;
+  
+        if (key == SDLK_ESCAPE) {
+          return false;
+        }
+  
+        nextScrollTime = SDL_GetTicks() + INITIAL_DELAY; 
+  
+        if (key == SDLK_UP || key == SDLK_LEFT) {
+          if (selected > 0) {
+            --selected;
+          }
+        } else if (key == SDLK_DOWN || key == SDLK_RIGHT) {
+          if (selected + 1 < entries.size()) {
+            ++selected;
+          }
+        } else if (key == SDLK_PAGEUP) {
+          selected = selected > visibleRows ? selected - visibleRows : 0;
+        } else if (key == SDLK_PAGEDOWN) {
+          selected = std::min(selected + visibleRows, entries.size() - 1);
+        } else if (key == SDLK_HOME) {
+          selected = 0;
+        } else if (key == SDLK_END) {
+          selected = entries.size() - 1;
+        } else if (key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE) {
+          const file_entry_t& entry = entries[selected];
+          rememberedIndex = selected;
+          if (entry.name == kEjectEntryName) {
+            ejectRequested = true;
+            rememberedIndex = 0;
+            return true;
+          }
+          if (entry.is_dir_type()) {
+            if (entry.type == file_entry_t::UP || entry.name == "..") {
+              directory = parentPath(directory);
+            }
+            else if (entry.name != ".") {
+              directory = joinPath(directory, entry.name);
+            }
+            break; // rescan the newly selected directory
+          }
+          chosenPath = joinPath(directory, entry.name);
+          return true;
+        }
+        if (selected < first) {
+          first = selected;
+        }
+        else if (selected >= first + visibleRows) {
+          first = selected - visibleRows + 1;
+        }
+      }
+    }
+
+#else
+
     for (;;) {
       drawBrowser(background, directory, driveLabel, entries, selected, first);
       SDL_Event event;
@@ -550,51 +660,7 @@ bool browseForDrive(const ChooserBackground& background, std::string& directory,
           }
         }
       }
-#ifdef SDL2
-      const SDL_Keycode key = event.key.keysym.sym;
 
-      if (key == SDLK_ESCAPE) {
-        return false;
-      }
-
-      if (key == SDLK_UP || key == SDLK_LEFT) {
-        if (selected > 0) {
-          --selected;
-        }
-      } else if (key == SDLK_DOWN || key == SDLK_RIGHT) {
-        if (selected + 1 < entries.size()) {
-          ++selected;
-        }
-      } else if (key == SDLK_PAGEUP) {
-        selected = selected > visibleRows ? selected - visibleRows : 0;
-      } else if (key == SDLK_PAGEDOWN) {
-        selected = std::min(selected + visibleRows, entries.size() - 1);
-      } else if (key == SDLK_HOME) {
-        selected = 0;
-      } else if (key == SDLK_END) {
-        selected = entries.size() - 1;
-      } else if (key == SDLK_RETURN || key == SDLK_KP_ENTER) {
-        const file_entry_t& entry = entries[selected];
-        rememberedIndex = selected;
-        if (entry.name == kEjectEntryName) {
-          ejectRequested = true;
-          rememberedIndex = 0;
-          return true;
-        }
-        if (entry.is_dir_type()) {
-          if (entry.type == file_entry_t::UP || entry.name == "..") {
-            directory = parentPath(directory);
-          }
-          else if (entry.name != ".") {
-            directory = joinPath(directory, entry.name);
-          }
-          break; // rescan the newly selected directory
-        }
-        chosenPath = joinPath(directory, entry.name);
-        return true;
-      }
-
-#else
       const SDLKey key = event.key.keysym.sym;
 
       if (key == SDLK_ESCAPE) {
@@ -617,7 +683,7 @@ bool browseForDrive(const ChooserBackground& background, std::string& directory,
         selected = 0;
       } else if (key == SDLK_END) {
         selected = entries.size() - 1;
-      } else if (key == SDLK_RETURN || key == SDLK_KP_ENTER) {
+      } else if (key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE) {
         const file_entry_t& entry = entries[selected];
         rememberedIndex = selected;
         if (entry.name == kEjectEntryName) {
@@ -637,8 +703,6 @@ bool browseForDrive(const ChooserBackground& background, std::string& directory,
         chosenPath = joinPath(directory, entry.name);
         return true;
       }
-#endif
-
       if (selected < first) {
         first = selected;
       }
@@ -646,6 +710,8 @@ bool browseForDrive(const ChooserBackground& background, std::string& directory,
         first = selected - visibleRows + 1;
       }
     }
+#endif
+
   }
 }
 
@@ -687,7 +753,7 @@ bool ChooserRun(const std::string& startDirectory)
     else if (key == SDLK_DOWN || key == SDLK_RIGHT) {
       selected = (selected + 1) % 5;
     }
-    else if (key == SDLK_RETURN || key == SDLK_KP_ENTER) {
+    else if (key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE) {
       if (selected == 4) {
         setupAndLaunchGptokeyb();
         return true;
@@ -741,7 +807,7 @@ bool ChooserRun(const std::string& startDirectory)
     else if (key == SDLK_DOWN || key == SDLK_RIGHT) {
       selected = (selected + 1) % 5;
     }
-    else if (key == SDLK_RETURN || key == SDLK_KP_ENTER) {
+    else if (key == SDLK_RETURN || key == SDLK_KP_ENTER || key == SDLK_SPACE) {
       if (selected == 4) {
         setupAndLaunchGptokeyb();
         return true;
