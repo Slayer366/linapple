@@ -95,6 +95,8 @@ void font_print_right(int x, int y, const char *text, SDL_Surface *surface, doub
 
 void font_print_centered(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky);
 
+void font_print_nowrap(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky);
+
 // Some auxiliary functions
 void surface_fader(SDL_Surface *surface, float r_factor, float g_factor, float b_factor, float a_factor, SDL_Rect *r);
 

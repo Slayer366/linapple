@@ -475,6 +475,43 @@ void font_print(int x, int y, const char *text, SDL_Surface *surface, double kx,
   }
 }
 
+void font_print_nowrap(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
+{
+  // kx, ky - stretching koefficients for width and height of destination chars respectively
+  int i, c;
+  SDL_Rect s, d;
+
+  for (i = 0; text[i] != 0; i++) {
+    if (x + (i + 1) * FONT_SIZE_X * kx > surface->w) {
+      break;
+    }
+
+    int row;
+    c = int(text[i]);
+
+    if (c > 127 || c < 0) {
+      c = '?';  // cut-off non-ASCII chars
+    }
+
+    row = c / CHARS_IN_ROW;
+
+    s.x = (c - (row * CHARS_IN_ROW)) * (FONT_SIZE_X + 1) + 1;
+    s.y = (row) * (FONT_SIZE_Y + 1) + 1;
+    s.h = FONT_SIZE_Y;
+    s.w = FONT_SIZE_X;
+
+    d.x = x + i * FONT_SIZE_X * kx;
+    d.y = y;
+    d.w = s.w * kx;
+    d.h = s.h * ky;
+#ifdef SDL2
+    SDL_BlitScaled(font_sfc, &s, surface, &d);
+#else
+    SDL_SoftStretchOr(font_sfc, &s, surface, &d);
+#endif
+  }
+}
+
 void font_print_right(int x, int y, const char *text, SDL_Surface *surface, double kx, double ky)
 {
   // kx, ky - stretching koefficients for width and height of destination chars respectively
