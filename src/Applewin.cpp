@@ -1414,8 +1414,8 @@ int main(int argc, char *argv[])
     sg_SSC.CommDestroy();
     CpuDestroy();
     SpkrDestroy();
-    OSK_Cleanup();
     VideoDestroy();
+    OSK_Cleanup();
     MemDestroy();
     MB_Destroy();
     MB_Reset();
