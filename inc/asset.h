@@ -24,6 +24,7 @@ typedef struct {
   SDL_Surface *icon;
   SDL_Surface *font;
   SDL_Surface *splash;
+  SDL_Surface *pm;
 } assets_t;
 
 extern assets_t *assets;

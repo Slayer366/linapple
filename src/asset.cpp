@@ -34,6 +34,7 @@
 
 #include "../res/font.xpm"
 #include "../res/icon.xpm"
+#include "../res/pm.xpm"
 #include "../build/obj/splash.xpm"
 
 #define ASSET_MASTER_DSK     "Master.dsk"
@@ -102,6 +103,11 @@ bool Asset_Init(void)
     return false;
   }
 
+  assets->pm = IMG_ReadXPMFromArray(pm_xpm);
+  if (NULL == assets->pm) {
+    return false;
+  }
+
   return true;
 }
 
@@ -121,6 +127,11 @@ void Asset_Quit(void)
     if (NULL != assets->splash) {
       SDL_FreeSurface(assets->splash);
       assets->splash = NULL;
+    }
+
+    if (NULL != assets->pm) {
+      SDL_FreeSurface(assets->pm);
+      assets->pm = NULL;
     }
 
     if (NULL != system_exedir) {
