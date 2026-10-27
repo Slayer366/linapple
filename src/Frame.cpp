@@ -740,6 +740,11 @@ static bool bIamFullScreened;  // for correct fullscreen switching
 
 #ifdef SDL2
 static int sdl2windowflags;
+
+// Software key-repeat tracking
+Uint32 g_SoftwareRepeatNextTime = 0;
+SDL_Keycode g_SoftwareRepeatKey = SDLK_UNKNOWN;
+bool g_SoftwareRepeatExtended = false;
 #endif
 
 void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
@@ -957,6 +962,13 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
             (mysym == SDLK_DOWN) ||
             (mysym == SDLK_LEFT) ||
             (mysym == SDLK_RIGHT);
+
+        // If it's a fresh press (not a native OS repeat), track it
+        if (e->key.repeat == 0) {
+          g_SoftwareRepeatKey = (SDL_Keycode)mysym;
+          g_SoftwareRepeatExtended = extended;
+          g_SoftwareRepeatNextTime = SDL_GetTicks() + 350; // Initial delay (ms)
+        }
 #else
         bool extended = (mysym >= SDLK_UP); // 24bit of lparam - is an extended key, what is it???
 #endif
@@ -986,6 +998,12 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
       break;
 
     case SDL_KEYUP:
+#ifdef SDL2
+      // If the currently tracked repeating key is released, stop the software loop
+      if ((SDL_Keycode)mysym == g_SoftwareRepeatKey) {
+        g_SoftwareRepeatKey = SDLK_UNKNOWN;
+      }
+#endif
       if ((mysym >= SDLK_F1) && (mysym <= SDLK_F12) && (buttondown == mysym - SDLK_F1)) {
         buttondown = -1;
         ProcessButtonClick(mysym - SDLK_F1, mymod); // process function keys - special events

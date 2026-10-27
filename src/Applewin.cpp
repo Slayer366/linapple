@@ -141,6 +141,14 @@ ULONG g_nPerfFreq = 0;
 static unsigned int g_uModeStepping_Cycles = 0;
 static bool g_uModeStepping_LastGetKey_ScrollLock = false;
 
+#ifdef SDL2
+extern Uint32 g_SoftwareRepeatNextTime;
+extern SDL_Keycode g_SoftwareRepeatKey;
+extern bool g_SoftwareRepeatExtended;
+extern void KeybQueueKeypress(int key, bool bASCII);
+extern bool JoyProcessKey(int key, bool extended, bool pressed, bool autorep);
+#endif
+
 void ContinueExecution()
 {
   const double fUsecPerSec = 1.e6;
@@ -180,6 +188,20 @@ void ContinueExecution()
 
   DiskUpdatePosition(uActualCyclesExecuted);
   JoyUpdatePosition();
+
+#ifdef SDL2
+  if (g_SoftwareRepeatKey != SDLK_UNKNOWN && g_nAppMode == MODE_RUNNING && !g_bFullSpeed) {
+    Uint32 now = SDL_GetTicks();
+    if (now >= g_SoftwareRepeatNextTime) {
+      // Re-fire the key down into joystick mapping / keyboard buffer matrices
+      if ((!JoyProcessKey(g_SoftwareRepeatKey, g_SoftwareRepeatExtended, true, 1)) && (g_nAppMode != MODE_LOGO)) {
+        KeybQueueKeypress(g_SoftwareRepeatKey, 0); // NOT_ASCII
+      }
+      g_SoftwareRepeatNextTime = now + 60; // Repeat frequency pace (ms)
+    }
+  }
+#endif
+
   // the next call does not present in current Applewin as on March 2012??
   VideoUpdateVbl(g_dwCyclesThisFrame);
   //
