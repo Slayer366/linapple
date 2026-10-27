@@ -236,13 +236,22 @@ void DrawTextSource(SDL_Surface *dc);
 bool VideoInitWorker();
 
 pthread_t video_worker_thread_;
-static volatile bool video_worker_active_ = false;
-static volatile bool video_worker_terminate_ = false;
-static volatile bool video_worker_refresh_ = false;
+static std::atomic<bool> video_worker_active_(false);
+static std::atomic<bool> video_worker_terminate_(false);
+static std::atomic<bool> video_worker_refresh_(false);
+static std::mutex video_worker_mutex;
 pthread_mutex_t video_draw_mutex;
 std::condition_variable video_cv;
 
-static char display_pipeline_[(0x2000 * 4) + (0x400 * 4)];
+//static char display_pipeline_[(0x2000 * 4) + (0x400 * 4)];
+#define FRAME_BUFFER_SIZE ((0x2000 * 4) + (0x400 * 4))
+
+alignas(64) static char display_pipeline_A[FRAME_BUFFER_SIZE];
+alignas(64) static char display_pipeline_B[FRAME_BUFFER_SIZE];
+
+std::atomic<char*> g_pWorkerPipeline{ display_pipeline_A };
+std::atomic<char*> g_pCorePipeline{ display_pipeline_B };
+std::atomic<bool> g_NewFrameReady{ false };
 
 
 void CopySource(int destx, int desty, int xsize, int ysize, int sourcex, int sourcey) {
@@ -983,7 +992,7 @@ bool Update40ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   (void)x;
   (void)y;
   unsigned char ch = *(g_pTextBank0 + offset);
-  bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
+  bool bCharChanged = (ch != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_.load());
 
   // FLASHing chars:
   // - FLASHing if:Alt Char Set is OFF && 0x40<=char<=0x7F
@@ -1022,8 +1031,8 @@ bool Update80ColCell(int x, int y, int xpixel, int ypixel, int offset) {
   unsigned char c1 = *(g_pTextBank1 + offset); // aux
   unsigned char c0 = *(g_pTextBank0 + offset); // main
 
-  bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull || video_worker_active_);
-  bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_);
+  bool bC1Changed = (c1 != *(vidlastmem + offset + 0) || redrawfull || video_worker_active_.load());
+  bool bC0Changed = (c0 != *(vidlastmem + offset + 0x400) || redrawfull || video_worker_active_.load());
 
   bool bC1Flashing = (g_nAltCharSetOffset == 0) && (c1 >= 0x40) && (c1 <= 0x7F);
   bool bC0Flashing = (g_nAltCharSetOffset == 0) && (c0 >= 0x40) && (c0 <= 0x7F);
@@ -1074,7 +1083,7 @@ bool UpdateDHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
     unsigned char byteval4 = (x < 39) ? *(g_pHiresBank1 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset)) || (byteval3 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x70) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x70))) ||
-        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull || video_worker_active_) {
+        ((x < 39) && ((byteval4 & 0x07) != (*(vidlastmem + offset + yoffset + 1) & 0x07))) || redrawfull || video_worker_active_.load()) {
       unsigned int dwordval =
         (byteval1 & 0x70) | ((byteval2 & 0x7F) << 7) | ((byteval3 & 0x7F) << 14) | ((byteval4 & 0x07) << 21);
 
@@ -1177,16 +1186,30 @@ void MixColorsVertical(int matx, int maty)
   int bot1idx = 0;
   int bot2idx = 0;
 
-  if (SW_MIXED && maty > 159) {
-    if (maty < 161) {
-      bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
-      bot2idx = 0;
+  if (!g_singlethreaded) {
+    if (SWL_MIXED && maty > 159) {
+      if (maty < 161) {
+        bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
+        bot2idx = 0;
+      } else {
+        bot1idx = bot2idx = 0;
+      }
     } else {
-      bot1idx = bot2idx = 0;
+      bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
+      bot2idx = hgrpixelmatrix[matx][maty + 2] & 0x0F;
     }
   } else {
-    bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
-    bot2idx = hgrpixelmatrix[matx][maty + 2] & 0x0F;
+    if (SW_MIXED && maty > 159) {
+      if (maty < 161) {
+        bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
+        bot2idx = 0;
+      } else {
+        bot1idx = bot2idx = 0;
+      }
+    } else {
+      bot1idx = hgrpixelmatrix[matx][maty + 1] & 0x0F;
+      bot2idx = hgrpixelmatrix[matx][maty + 2] & 0x0F;
+    }
   }
 
   twoHalfPixel = colormixmap[ClampMix(hgrpixelmatrix[matx][maty - 2] & 0x0F)]
@@ -1218,27 +1241,54 @@ void CopyMixedSource(int x, int y, int sourcex, int sourcey) {
   int bufxoffset = 0;
   int hgrlinesabove = (y > 0) ? 1 : 0;
 //  int hgrlinesbelow = SW_MIXED ? ((y < 159) ? 1 : 0) : ((y < 191) ? 1 : 0);
-  const int MAX_HGR_Y = SW_MIXED ? 159 : 191;
-  int hgrlinesbelow = (y < MAX_HGR_Y) ? 1 : 0;
-  int i = 0;
-  int istart = 2 - (hgrlinesabove << 1);
-  int iend = 3 + (hgrlinesbelow << 1);
+  if (!g_singlethreaded) {
+    const int MAX_HGR_Y = SWL_MIXED ? 159 : 191;  // Use SWL_MIXED (vidmode_latched & VF_MIXED) with video worker thread
+    int hgrlinesbelow = (y < MAX_HGR_Y) ? 1 : 0;
+    int i = 0;
+    int istart = 2 - (hgrlinesabove << 1);
+    int iend = 3 + (hgrlinesbelow << 1);
 
-  // transfer 7 pixels (i.e. the visible part of an apple hgr-byte) from row to pixelmatrix
-  for (count = 0, bufxoffset = 0; count < 7; count++, bufxoffset += 2) {
-    hgrpixelmatrix[matx + count][maty] = *(currsourceptr + bufxoffset);
-    // color mixing between adjacent scanlines at current x position
-    MixColorsVertical(matx + count, maty);
-    // transfer up to 6 mixed (half-)pixels of current column to framebuffer
-    currptr = currdestptr + bufxoffset;
-    if (hgrlinesabove) {
-      currptr -= framebufferpitch << 1;  // we just should change sign of op: '-' instead of '+'
+    // transfer 7 pixels (i.e. the visible part of an apple hgr-byte) from row to pixelmatrix
+    for (count = 0, bufxoffset = 0; count < 7; count++, bufxoffset += 2) {
+      hgrpixelmatrix[matx + count][maty] = *(currsourceptr + bufxoffset);
+      // color mixing between adjacent scanlines at current x position
+      MixColorsVertical(matx + count, maty);
+      // transfer up to 6 mixed (half-)pixels of current column to framebuffer
+      currptr = currdestptr + bufxoffset;
+      if (hgrlinesabove) {
+        currptr -= framebufferpitch << 1;  // we just should change sign of op: '-' instead of '+'
+      }
+      for (i = istart; i <= iend; currptr += framebufferpitch, i++) {  // and vice versa
+        if (~i & 1) {
+          *currptr = *(currptr + 1) = colormixbuffer[i];
+        } else {
+          *currptr = 0;
+        }
+      }
     }
-    for (i = istart; i <= iend; currptr += framebufferpitch, i++) {  // and vice versa
-      if (~i & 1) {
-        *currptr = *(currptr + 1) = colormixbuffer[i];
-      } else {
-        *currptr = 0;
+  } else {
+    const int MAX_HGR_Y = SW_MIXED ? 159 : 191;  // Use SW_MIXED (g_uVideoMode & VF_MIXED) in single threaded operation
+    int hgrlinesbelow = (y < MAX_HGR_Y) ? 1 : 0;
+    int i = 0;
+    int istart = 2 - (hgrlinesabove << 1);
+    int iend = 3 + (hgrlinesbelow << 1);
+
+    // transfer 7 pixels (i.e. the visible part of an apple hgr-byte) from row to pixelmatrix
+    for (count = 0, bufxoffset = 0; count < 7; count++, bufxoffset += 2) {
+      hgrpixelmatrix[matx + count][maty] = *(currsourceptr + bufxoffset);
+      // color mixing between adjacent scanlines at current x position
+      MixColorsVertical(matx + count, maty);
+      // transfer up to 6 mixed (half-)pixels of current column to framebuffer
+      currptr = currdestptr + bufxoffset;
+      if (hgrlinesabove) {
+        currptr -= framebufferpitch << 1;  // we just should change sign of op: '-' instead of '+'
+      }
+      for (i = istart; i <= iend; currptr += framebufferpitch, i++) {  // and vice versa
+        if (~i & 1) {
+          *currptr = *(currptr + 1) = colormixbuffer[i];
+        } else {
+          *currptr = 0;
+        }
       }
     }
   }
@@ -1257,7 +1307,7 @@ bool UpdateHiResCell(int x, int y, int xpixel, int ypixel, int offset) {
     unsigned char byteval3 = (x < 39) ? *(g_pHiresBank0 + offset + yoffset + 1) : 0;
     if ((byteval2 != *(vidlastmem + offset + yoffset + 0x2000)) ||
         ((x > 0) && ((byteval1 & 0x60) != (*(vidlastmem + offset + yoffset + 0x1FFF) & 0x60))) ||
-        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull || video_worker_active_) {
+        ((x < 39) && ((byteval3 & 0x03) != (*(vidlastmem + offset + yoffset + 0x2001) & 0x03))) || redrawfull || video_worker_active_.load()) {
       int COLOFFS = ((byteval1 & 0x60) << 2) | ((byteval3 & 0x03) << 5);
       if (g_videotype == VT_COLOR_TVEMU) {
         CopyMixedSource(xpixel >> 1, (ypixel + (yoffset >> 9)) >> 1, SRCOFFS_HIRES + COLOFFS + ((x & 1) << 4),
@@ -1280,7 +1330,7 @@ bool UpdateLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   }
   (void)y;
   unsigned char val = *(g_pTextBank0 + offset);
-  if ((val != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
+  if ((val != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_.load()) {
     CopySource(xpixel, ypixel, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), ((val & 0xF) << 4));
     CopySource(xpixel, ypixel + 8, 14, 8, SRCOFFS_LORES + ((x & 1) << 1), (val & 0xF0));
     return true;
@@ -1298,7 +1348,7 @@ bool UpdateDLoResCell(int x, int y, int xpixel, int ypixel, int offset) {
   unsigned char auxval = *(g_pTextBank1 + offset);
   unsigned char mainval = *(g_pTextBank0 + offset);
 
-  if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_) {
+  if ((auxval != *(vidlastmem + offset)) || (mainval != *(vidlastmem + offset + 0x400)) || redrawfull || video_worker_active_.load()) {
 		const uint8_t auxval_h = auxval >> 4;
 		const uint8_t auxval_l = auxval & 0xF;
 		auxval = (ROL_NIB(auxval_h)<<4) | ROL_NIB(auxval_l);	// Fix Bug #14879
@@ -1388,7 +1438,7 @@ SDL_Surface* LoadCharset() {
 // All globally accessible functions are below this line
 
 bool VideoApparentlyDirty() {
-  if (SW_MIXED || redrawfull || video_worker_active_) {
+  if (SW_MIXED || redrawfull || video_worker_active_.load()) {
     return 1;
   }
 //  unsigned int address = (SW_HIRES && !SW_TEXT) ? (0x20 << displaypage2) : (0x4 << displaypage2);
@@ -1656,10 +1706,10 @@ void VideoDestroy() {
   // GPH Multithreaded
   {
     void *result;
-    video_worker_terminate_ = true;
-    if (video_worker_active_)
+    video_worker_terminate_.store(true);
+    if (video_worker_active_.load())
       pthread_join(video_worker_thread_,&result);
-    video_worker_active_ = false;
+    video_worker_active_.store(false);
   }
   // END GPH
 
@@ -1696,6 +1746,7 @@ void VideoDestroy() {
   g_hLogoBitmap = NULL;
 #ifdef SDL2
   assets->splash = NULL; // add by trngaje
+  assets->pm = NULL; // add by slayer366
 
   if (screen) {
     SDL_FreeSurface(screen);
@@ -1819,14 +1870,14 @@ void VideoSetNextScheduledUpdate()
 // when necessary.
 void *VideoWorkerThread(void *params)
 {
-  std::mutex mtx;
-  std::unique_lock<std::mutex> lck(mtx);
+  std::unique_lock<std::mutex> lck(video_worker_mutex);
   while (!video_worker_terminate_) {
     video_cv.wait_until(lck, video_next_scheduled_update_);
     {
-      if (video_worker_refresh_) {
+      if (video_worker_refresh_.load() || g_NewFrameReady.load(std::memory_order_acquire)) {
+        g_NewFrameReady.store(false, std::memory_order_relaxed);
         VideoPerformRefresh();
-        video_worker_refresh_ = false;
+        video_worker_refresh_.store(false);
         std::this_thread::yield();
       }
     }
@@ -1834,11 +1885,11 @@ void *VideoWorkerThread(void *params)
   return NULL;
 }
 
-// VideoIniteWorker
+// VideoInitWorker
 // Initializes worker thread for video updates
 bool VideoInitWorker()
 {
-  video_worker_active_ = true;
+  video_worker_active_.store(true);
   int error = pthread_create(
         &video_worker_thread_,
         NULL,
@@ -1849,7 +1900,7 @@ bool VideoInitWorker()
     // If failed to start, revert to singlethreaded
     std::cerr << "FAILED to start video worker; reverting to single-threaded video updating..." << std::endl;
     g_singlethreaded = false;
-    video_worker_active_ = false;
+    video_worker_active_.store(false);
   }
   return true;
 }
@@ -1915,6 +1966,9 @@ void VideoPerformRefresh() {
     // This is a one-level pipelining
     // That way, the 6502 CPU emulation can go on its merry way without
     // causing display glitches as emulation runs concurrently with screen drawing
+
+   char* active_worker_buf = g_pWorkerPipeline.load(std::memory_order_acquire);
+/*
     memcpy(display_pipeline_       ,MemGetAuxPtr ( 0x2000 << page2_shift), 0x2000);
     memcpy(display_pipeline_+0x2000,MemGetMainPtr( 0x2000 << page2_shift), 0x2000);
     memcpy(display_pipeline_+0x4000,MemGetAuxPtr ( 0x0400 << page2_shift), 0x0400);
@@ -1924,6 +1978,11 @@ void VideoPerformRefresh() {
     g_pHiresBank0 = (LPBYTE) display_pipeline_ + 0x2000;
     g_pTextBank1 =  (LPBYTE) display_pipeline_ + 0x4000;
     g_pTextBank0 =  (LPBYTE) display_pipeline_ + 0x4400;
+*/
+    g_pHiresBank1 = (LPBYTE) active_worker_buf;
+    g_pHiresBank0 = (LPBYTE) active_worker_buf + 0x2000;
+    g_pTextBank1 =  (LPBYTE) active_worker_buf + 0x4000;
+    g_pTextBank0 =  (LPBYTE) active_worker_buf + 0x4400;
   }
   // Check each cell for changed bytes.  redraw pixels for the changed bytes
   // in the frame buffer. Mark cells in which redrawing has taken place as dirty.
@@ -2077,8 +2136,24 @@ void VideoRefreshScreen( uint32_t uRedrawWholeScreenVideoMode /* =0*/, bool bRed
     redrawfull = 1;
   }
 
-  if (video_worker_active_) {
-    video_worker_refresh_ = true;
+  if (video_worker_active_.load()) {
+    char* target_buf = g_pCorePipeline.load(std::memory_order_relaxed);
+    const int page2_shift = displaypage2 ? 1 : 0;
+
+    // Perform the fast snapshot memory copy on the core side
+    memcpy(target_buf,          MemGetAuxPtr(0x2000 << page2_shift), 0x2000);
+    memcpy(target_buf + 0x2000, MemGetMainPtr(0x2000 << page2_shift), 0x2000);
+    memcpy(target_buf + 0x4000, MemGetAuxPtr(0x0400 << page2_shift), 0x0400);
+    memcpy(target_buf + 0x4400, MemGetMainPtr(0x0400 << page2_shift), 0x0400);
+
+    // Atomically exchange the pipelines (Flip Front/Back)
+    char* old_worker_buf = g_pWorkerPipeline.exchange(target_buf, std::memory_order_release);
+    g_pCorePipeline.store(old_worker_buf, std::memory_order_relaxed);
+
+    // Signal the video worker thread that clean frame data is ready
+    g_NewFrameReady.store(true, std::memory_order_release);
+
+    video_worker_refresh_.store(true);
   } else {
     // If singlethreaded just call the refresh here.
     VideoPerformRefresh();
