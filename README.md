@@ -19,7 +19,7 @@ development currently resides.
 [SourceForge]: http://linapple.sourceforge.net/
 [maxolasersquad]: https://github.com/maxolasersquad
 [linappleii]: https://github.com/linappleii
-
+[Slayer366]: https://github.com/slayer366
 
 Command Line Switches
 ---------------------
@@ -29,9 +29,15 @@ Command Line Switches
   (The standard configuration file search is not done.)
 * `-1|--d1 path/to/image1.dsk`: Specifies a disk image to load into FDD1 (drive 0)
 * `-2|--d2 path/to/image2.dsk`: Specifies a disk image to load into FDD1 (drive 1)
+* `--hd1 path/to/hdimage.hdv`: Specifies a hard disk image to load into HDD1
+* `--hd2 path/to/hdimage2.hdv`: Specifies a hard disk image to load into HDD2
+* `--ser <file>`: Serial port to use and map on slot2
+* `--state path/to/save.aws`: Specifies a savestate file to save and load emulator state
+* `--chooser path/to/diskimages/`: Specifies a path to images to load using ez-image browser
 * `-b|--autoboot`: Boots the system automatically, rather than displaying the splash screen
 * `-f`: Specifies that the emulator should run in fullscreen mode
 * `-l`: Logs output to a file called AppleWin.log (untested)
+* `-r PAGES`: Allocate PAGES to Ramworks (1-127)
 * `--benchmark`: Specifies that benchmark should be loaded (untested)
 
 _Note: some command-line options have not been fully tested._
@@ -88,6 +94,7 @@ released by pressing any function key.
 | Ctrl+0-9       | Load snapshot `n`.                                               |
 | Ctrl+Shift+0-9 | Save snapshot `n`.                                               |
 | -------------- | -----------------------------------------------------------------|
+| Esc            | Toggle On-screen keyboard.                                       |
 | Pause          | Pause/resume emulation.                                          |
 | Scroll Lock    | Toggle full speed emulation.                                     |
 | Numpad +       | Increase emulation speed.                                        |
