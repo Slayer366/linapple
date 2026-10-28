@@ -290,12 +290,23 @@ public:
       source = screen;
     }
 
+    const double fx = double(g_ScreenWidth) / double(SCREEN_WIDTH);
+    const double fy = double(g_ScreenHeight) / double(SCREEN_HEIGHT);
+
 #ifdef SDL2
     m_surface = SDL_ConvertSurface(source, screen->format, 0);
     if (m_surface) {
-      // Copy the selected logo/device surface once, then fade that copy once.
+      // Copy the selected surface once, then fade that copy once.
       // draw() blits this immutable faded surface every frame, preventing trails.
       if (SDL_BlitScaled(source, NULL, m_surface, NULL) == 0) {
+        // Hide 'F1 for Help' at bottom right corner of LinApple screen with a black-filled rect.
+        SDL_Rect hidef1forhelp;
+          hidef1forhelp.x = int(424 * fx);
+          hidef1forhelp.y = int(356 * fy);
+          hidef1forhelp.w = 114;
+          hidef1forhelp.h = 20;
+        SDL_FillRect(m_surface, &hidef1forhelp, SDL_MapRGB(m_surface->format, 0, 0, 0));  // black
+
         surfacefade32(m_surface, 0.2F);
       }
     }
@@ -309,6 +320,14 @@ public:
       }
       // The source must be copied before applying the fade.
       if (SDL_BlitSurface(source, NULL, m_surface, NULL) == 0) {
+        // Hide 'F1 for Help' at bottom right corner of LinApple screen with a black-filled rect.
+        SDL_Rect hidef1forhelp;
+          hidef1forhelp.x = int(424 * fx);
+          hidef1forhelp.y = int(356 * fy);
+          hidef1forhelp.w = 114;
+          hidef1forhelp.h = 20;
+        SDL_FillRect(m_surface, &hidef1forhelp, SDL_MapRGB(m_surface->format, 0, 0, 0));  // black
+
         surface_fader(m_surface, 0.2F, 0.2F, 0.2F, -1, 0);
       }
     }
