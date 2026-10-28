@@ -1207,14 +1207,38 @@ int main(int argc, char *argv[])
     if (extension == ".po"   ||
         extension == ".2mg"  ||
         extension == ".2img") {
-      fprintf(stderr, "Error: cannot determine the disk type for '%s' "
-                      "from its extension alone.\n", filename);
-      fprintf(stderr, "Specify --d1 for a floppy disk or --hd1 "
-                      "for a hard disk image.\n");
-      return 255;
-    }
+      bool targetIsHardDisk = true;
+      FILE* fimg = fopen(filename, "rb");
+      if (fimg) {
+        unsigned char header[32];
+        size_t readBytes = fread(header, 1, 32, fimg);
+        fclose(fimg);
 
-    if (extension == ".hdv") {
+        if (readBytes >= 32 && memcmp(header, "2IMG", 4) == 0) {
+          // Unpack Format ID (offset 12) and ProDOS Block Count (offset 20)
+          unsigned int imageFormat = header[12] | (header[13] << 8) | (header[14] << 16) | (header[15] << 24);
+          unsigned int blockCount  = header[20] | (header[21] << 8) | (header[22] << 16) | (header[23] << 24);
+
+          if (imageFormat == 0 || imageFormat == 2) {
+            targetIsHardDisk = false; // 5.25" DOS 3.3 or Nibble floppy
+          } else if (imageFormat == 1) {
+            targetIsHardDisk = (blockCount >= 1600); // ProDOS order 5.25" floppy (280 blocks) or 800KB 3.5" disk (1600 blocks)
+          }
+        } else {
+          struct stat st;
+          if (stat(filename, &st) == 0) {
+            targetIsHardDisk = (st.st_size > 143400); // A standard 5.25" floppy image is never more than 143,360 bytes
+          }
+        }
+      }
+
+      if (targetIsHardDisk) {
+        szImageName_hd1 = (LPSTR)filename;
+      } else {
+        szImageName_drive1 = (LPSTR)filename;
+      }
+    }
+    else if (extension == ".hdv") {
       szImageName_hd1 = (LPSTR)filename;
     } else if (extension == ".dsk" ||
                extension == ".do"  ||
@@ -1223,11 +1247,13 @@ int main(int argc, char *argv[])
                extension == ".woz" ||
                extension == ".zip" ||
                extension == ".gz") {
+      if (extension == ".zip") { fprintf(stderr, "Quick mode will assume ZIP archives contain floppy images\n"); }
+      if (extension == ".gz") { fprintf(stderr, "Quick mode will assume GZ archives contain floppy images\n"); }
       szImageName_drive1 = (LPSTR)filename;
     } else {
       fprintf(stderr, "Error: unsupported disk image or file not found: '%s'.\n", filename);
-      fprintf(stderr, "Supported quick floppy extensions: .dsk, .do, .bin, .nib, .woz, .zip, .gz\n");
-      fprintf(stderr, "Supported quick hard disk extension: .hdv\n");
+      fprintf(stderr, "Supported quick floppy extensions: .dsk, .do, .bin, .nib, .woz, .po, .2mg, .2img, .zip, .gz\n");
+      fprintf(stderr, "Supported quick hard disk extension: .hdv, .po, .2mg, .2img\n");
       return 255;
     }
 
