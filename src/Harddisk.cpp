@@ -106,22 +106,30 @@ Overview
       sound card in slot 7 is a generally bad idea) will cause problems.
 */
 
-char Hddrvr_dat[] = "\xA9\x20\xA9\x00\xA9\x03\xA9\x3C\xA9\x00\x8D\xF2\xC0\xA9\x70\x8D"
-                    "\xF3\xC0\xAD\xF0\xC0\x48\xAD\xF1\xC0\x18\xC9\x01\xD0\x01\x38\x68"
-                    "\x90\x03\x4C\x00\xC6\xA9\x70\x85\x43\xA9\x00\x85\x44\x85\x46\x85"
-                    "\x47\xA9\x08\x85\x45\xA9\x01\x85\x42\x20\x46\xC7\x90\x03\x4C\x00"
-                    "\xC6\xA2\x70\x4C\x01\x08\x18\xA5\x42\x8D\xF2\xC0\xA5\x43\x8D\xF3"
-                    "\xC0\xA5\x44\x8D\xF4\xC0\xA5\x45\x8D\xF5\xC0\xA5\x46\x8D\xF6\xC0"
-                    "\xA5\x47\x8D\xF7\xC0\xAD\xF0\xC0\x48\xA5\x42\xC9\x01\xD0\x03\x20"
-                    "\x7D\xC7\xAD\xF1\xC0\x18\xC9\x01\xD0\x01\x38\x68\x60\x98\x48\xA0"
-                    "\x00\xAD\xF8\xC0\x91\x44\xC8\xD0\xF8\xE6\x45\xA0\x00\xAD\xF8\xC0"
-                    "\x91\x44\xC8\xD0\xF8\x68\xA8\x60\x00\x00\x00\x00\x00\x00\x00\x00"
-                    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-                    "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\x7F\xD7\x46";
+static const unsigned char Hddrvr_dat[256] = {
+    0xA9, 0x20, 0xA9, 0x00, 0xA9, 0x03, 0xA9, 0x3C, 0xA9, 0xC0, 0x85, 0x47,
+    0x0A, 0x0A, 0x0A, 0x0A, 0x85, 0x43, 0xA5, 0x47, 0x48, 0xA9, 0x1D, 0x48,
+    0xA9, 0x00, 0x85, 0x42, 0xF0, 0x28, 0xB0, 0x1F, 0xA5, 0x47, 0x48, 0xA9,
+    0x37, 0x48, 0xA9, 0x00, 0x85, 0x44, 0x85, 0x46, 0x85, 0x47, 0xA9, 0x08,
+    0x85, 0x45, 0xA9, 0x01, 0x85, 0x42, 0xD0, 0x0E, 0xB0, 0x05, 0xA6, 0x43,
+    0x4C, 0x01, 0x08, 0xB0, 0x6E, 0x00, 0x00, 0x00, 0x00, 0x00, 0xA5, 0x43,
+    0x29, 0x70, 0xAA, 0xA5, 0x43, 0x9D, 0x81, 0xC0, 0xA5, 0x46, 0x9D, 0x82,
+    0xC0, 0xA5, 0x47, 0x9D, 0x83, 0xC0, 0xA5, 0x42, 0xC9, 0x02, 0xD0, 0x18,
+    0xA0, 0x00, 0xB1, 0x44, 0x9D, 0x84, 0xC0, 0xC8, 0xD0, 0xF8, 0xE6, 0x45,
+    0xB1, 0x44, 0x9D, 0x84, 0xC0, 0xC8, 0xD0, 0xF8, 0xC6, 0x45, 0xA5, 0x42,
+    0x9D, 0x80, 0xC0, 0xBD, 0x80, 0xC0, 0xD0, 0x2D, 0xA5, 0x42, 0xF0, 0x1E,
+    0xC9, 0x01, 0xD0, 0x16, 0xA0, 0x00, 0xBD, 0x84, 0xC0, 0x91, 0x44, 0xC8,
+    0xD0, 0xF8, 0xE6, 0x45, 0xBD, 0x84, 0xC0, 0x91, 0x44, 0xC8, 0xD0, 0xF8,
+    0xC6, 0x45, 0xA9, 0x00, 0x18, 0x60, 0xBC, 0x86, 0xC0, 0xBD, 0x85, 0xC0,
+    0xAA, 0xA9, 0x00, 0x18, 0x60, 0x38, 0x60, 0xAD, 0xB3, 0xFB, 0xC9, 0x38,
+    0xF0, 0x11, 0xA5, 0x43, 0x4A, 0x4A, 0x4A, 0x4A, 0x09, 0xC0, 0x85, 0x01,
+    0xA9, 0x00, 0x85, 0x00, 0x4C, 0xBA, 0xFA, 0x4C, 0x59, 0xFF, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0xDF, 0x46
+};
 
 
 typedef struct {
@@ -361,13 +369,15 @@ LPCTSTR HD_GetImagePath(int nDrive) {
 }
 
 void HD_Load_Rom(LPBYTE pCxRomPeripheral, unsigned int uSlot) {
-  if (!g_bHD_Enabled)
+  if (!g_bHD_Enabled) {
     return;
+  }
 
   unsigned char *pData = (unsigned char *) Hddrvr_dat;  // NB. Don't need to unlock resource - hmmmmmm....... i love linux
 
   g_uSlot = uSlot;
   memcpy(pCxRomPeripheral + uSlot * 256, pData, HDDRVR_SIZE);
+  pCxRomPeripheral[uSlot * 256 + 0x09] = (unsigned char)(0xC0 | (uSlot & 0x0F));
   g_bHD_RomLoaded = true;
 }
 
@@ -552,13 +562,9 @@ void HD_Select(int nDrive)
   DrawFrameWindow();
 }
 
-#define DEVICE_OK        0x00
-#define DEVICE_UNKNOWN_ERROR  0x03
-#define DEVICE_IO_ERROR      0x08
-
 static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned char bWrite, unsigned char d, ULONG nCyclesLeft) {
-  unsigned char r = DEVICE_OK;
-  addr &= 0xFF;
+  unsigned char r = 0;
+  addr &= 0x0F;
 
   if (!HD_CardIsEnabled()) {
     return r;
@@ -566,186 +572,97 @@ static unsigned char HD_IO_EMUL(unsigned short pc, unsigned short addr, unsigned
 
   PHDD pHDD = &g_HardDrive[g_nHD_UnitNum >> 7];  // bit7 = drive select
 
-  if (bWrite == 0) { // read
+  if (bWrite == 0) { // Read from HW Register
     switch (addr) {
-      case 0xF0: {
-        if (pHDD->hd_imageloaded) {
-          // based on loaded data block request, load block into memory
-          // returns status
-          switch (g_nHD_Command) {
-            default:
-            case 0x00: //status
-              if (pHDD->hd_data_length == 0 && GetFileSize(pHDD->hd_file, NULL) == 0) {
-                pHDD->hd_error = 1;
-                r = DEVICE_IO_ERROR;
-              }
-              break;
-            case 0x01: //read
-            {
-              HD_SetStatus(DISK_STATUS_READ);
-              unsigned int br = GetFileSize(pHDD->hd_file, NULL);
-//              if ((unsigned int)(pHDD->hd_diskblock * 512) <= br) { // seek to block
-//                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-              unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
-              if ((pHDD->hd_data_length != 0 && blockOffset <= pHDD->hd_data_length &&
-                   pHDD->hd_data_length - blockOffset >= 512u) ||
-                  (pHDD->hd_data_length == 0 && blockOffset <= br && br - blockOffset >= 512u)) {
-                SetFilePointer(pHDD->hd_file, (int)(pHDD->hd_data_offset + blockOffset), NULL, FILE_BEGIN);
-                if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL)) { // read block into buffer
-                  pHDD->hd_error = 0;
-                  r = 0;
-                  pHDD->hd_buf_ptr = 0;
-                } else {
-                  pHDD->hd_error = 1;
-                  r = DEVICE_IO_ERROR;
-                }
-              } else {
-                pHDD->hd_error = 1;
-                r = DEVICE_IO_ERROR;
-              }
-            }
-              break;
-            case 0x02: //write
-            {
-              HD_SetStatus(DISK_STATUS_WRITE);
-              unsigned int bw = GetFileSize(pHDD->hd_file, NULL);
-//              if ((unsigned int)(pHDD->hd_diskblock * 512) <= bw) {
-              unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
-
-              // 2MG lock bit and filesystem-level read-only mounts are honored.
-              if (pHDD->hd_read_only ||
-                  (pHDD->hd_data_length != 0 &&
-                   (blockOffset > pHDD->hd_data_length || pHDD->hd_data_length - blockOffset < 512u))) {
-                pHDD->hd_error = 1;
-                r = DEVICE_IO_ERROR;
-              } else if ((pHDD->hd_data_length != 0 &&
-                          blockOffset <= pHDD->hd_data_length && pHDD->hd_data_length - blockOffset >= 512u) ||
-                         (pHDD->hd_data_length == 0 && blockOffset <= bw && bw - blockOffset >= 512u)) {
-                memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-//                SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN);  // seek to block
-//                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
-                SetFilePointer(pHDD->hd_file, (int)(pHDD->hd_data_offset + blockOffset), NULL, FILE_BEGIN);
-                if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) {
-                  pHDD->hd_error = 0;
-                  r = 0;
-                } else {
-                  pHDD->hd_error = 1;
-                  r = DEVICE_IO_ERROR;
-                }
-              } else if (pHDD->hd_data_length == 0) {
-                // Legacy raw .hdv images may grow on demand; wrapped 2MG images may not.
-                unsigned int fsize = SetFilePointer(pHDD->hd_file, 0, NULL, FILE_END);
-                unsigned int addblocks = pHDD->hd_diskblock - (fsize / 512);
-                memset(pHDD->hd_buf, 0, 512);
-                while (addblocks--) {
-//                  unsigned int bw;
-//                  WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL);
-                  unsigned int bytesWritten;
-                  if (!WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bytesWritten, NULL))
-                    break;
-                }
-//                if (SetFilePointer(pHDD->hd_file, pHDD->hd_diskblock * 512, NULL, FILE_BEGIN) != 0xFFFFFFFF) {
-                  // seek to block
-                if (SetFilePointer(pHDD->hd_file, (int)blockOffset, NULL, FILE_BEGIN) != 0xFFFFFFFFu) {
-                  memmove(pHDD->hd_buf, mem + pHDD->hd_memblock, 512);
-                  if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) { // write buffer to file
-                    pHDD->hd_error = 0;
-                    r = 0;
-                  } else {
-                    pHDD->hd_error = 1;
-                    r = DEVICE_IO_ERROR;
-                  }
-                } else {
-                  pHDD->hd_error = 1;
-                  r = DEVICE_IO_ERROR;
-                }
-              } else {
-                pHDD->hd_error = 1;
-                r = DEVICE_IO_ERROR;
-              }
-            }
-              break;
-            case 0x03: //format
-              HD_SetStatus(DISK_STATUS_WRITE);
-              break;
-          }
-        } else {
-          HD_SetStatus(DISK_STATUS_OFF);
-          pHDD->hd_error = 1;
-          r = DEVICE_UNKNOWN_ERROR;
-        }
-      }
-        break;
-      case 0xF1: // hd_error
-      {
+      case 0x0: // Command Register
         r = pHDD->hd_error;
-      }
         break;
-      case 0xF2: {
-        r = g_nHD_Command;
-      }
-        break;
-      case 0xF3: {
+      case 0x1: // Unit Latch
         r = g_nHD_UnitNum;
-      }
         break;
-      case 0xF4: {
-        r = (unsigned char)(pHDD->hd_memblock & 0x00FF);
-      }
-        break;
-      case 0xF5: {
-        r = (unsigned char)((pHDD->hd_memblock & 0xFF00) >> 8);
-      }
-        break;
-      case 0xF6: {
+      case 0x2: // Block Register Low
         r = (unsigned char)(pHDD->hd_diskblock & 0x00FF);
-      }
         break;
-      case 0xF7: {
+      case 0x3: // Block Register High
         r = (unsigned char)((pHDD->hd_diskblock & 0xFF00) >> 8);
-      }
         break;
-      case 0xF8: {
+      case 0x4: // Data Stream Port
         r = pHDD->hd_buf[pHDD->hd_buf_ptr];
-        pHDD->hd_buf_ptr++;
-      }
+        pHDD->hd_buf_ptr = (pHDD->hd_buf_ptr + 1) % 512;
+        break;
+      case 0x5: // Block Count Low (for STATUS commands)
+        r = (unsigned char)(pHDD->hd_memblock & 0x00FF); // We store block count here now
+        break;
+      case 0x6: // Block Count High
+        r = (unsigned char)((pHDD->hd_memblock & 0xFF00) >> 8);
         break;
       default:
-        printf("Unknow coomand: bWrite=0\n");
-        return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+        r = 0xFF; // Open floating bus fallback (No wheels and hovers?)
+        break;
     }
-  } else { // write
+  } else { // Write to HW Register
     switch (addr) {
-      case 0xF2: {
+      case 0x0: // Command Execution
         g_nHD_Command = d;
-      }
+
+        if (!pHDD->hd_imageloaded) {
+          pHDD->hd_error = 0x28; // no device error
+          break;
+        }
+
+        if (g_nHD_Command == 0x00) { // Stat Command
+          unsigned int totalBlocks = pHDD->hd_data_length ? (pHDD->hd_data_length / 512) : (GetFileSize(pHDD->hd_file, NULL) / 512);
+          if (totalBlocks > 0xFFFF) totalBlocks = 0xFFFF;
+          pHDD->hd_memblock = (unsigned short)totalBlocks; // Feed back to block count registers
+          pHDD->hd_error = 0x00; // Success
+        }
+        else if (g_nHD_Command == 0x01) { // Read Command
+          HD_SetStatus(DISK_STATUS_READ);
+          unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
+          SetFilePointer(pHDD->hd_file, (int)(pHDD->hd_data_offset + blockOffset), NULL, FILE_BEGIN);
+          unsigned int br;
+          if (ReadFile(pHDD->hd_file, pHDD->hd_buf, 512, &br, NULL)) {
+            pHDD->hd_error = 0x00;
+            pHDD->hd_buf_ptr = 0;
+          } else {
+            pHDD->hd_error = 0x27; // IO error
+          }
+        }
+        else if (g_nHD_Command == 0x02) { // Write Command
+          HD_SetStatus(DISK_STATUS_WRITE);
+          if (pHDD->hd_read_only) {
+            pHDD->hd_error = 0x2B; // Write protected
+          } else {
+            unsigned int blockOffset = (unsigned int)pHDD->hd_diskblock * 512u;
+            SetFilePointer(pHDD->hd_file, (int)(pHDD->hd_data_offset + blockOffset), NULL, FILE_BEGIN);
+            unsigned int bw;
+            if (WriteFile(pHDD->hd_file, pHDD->hd_buf, 512, &bw, NULL)) {
+              pHDD->hd_error = 0x00;
+            } else {
+              pHDD->hd_error = 0x27; // IO error
+            }
+          }
+        }
+        else {
+          pHDD->hd_error = 0x00; // FORMAT command fallback success
+        }
         break;
-      case 0xF3: {
-        // b7    = drive#
-        // b6..4 = slot#
-        // b3..0 = ?
+
+      case 0x1: // Unit Latch
         g_nHD_UnitNum = d;
-      }
+        pHDD = &g_HardDrive[g_nHD_UnitNum >> 7]; // Remap drive pointer focus immediately
+        pHDD->hd_buf_ptr = 0;
         break;
-      case 0xF4: {
-        pHDD->hd_memblock = (pHDD->hd_memblock & 0xFF00) | d;
-      }
-        break;
-      case 0xF5: {
-        pHDD->hd_memblock = (pHDD->hd_memblock & 0x00FF) | (d << 8);
-      }
-        break;
-      case 0xF6: {
+      case 0x2: // Block Low
         pHDD->hd_diskblock = (pHDD->hd_diskblock & 0xFF00) | d;
-      }
         break;
-      case 0xF7: {
-        pHDD->hd_diskblock = (pHDD->hd_diskblock & 0x00FF) | (d << 8);
-      }
+      case 0x3: // Block High
+        pHDD->hd_diskblock = (pHDD->hd_diskblock & 0x00FF) | ((unsigned int)d << 8);
         break;
-      default:
-        printf("Unknow coomand: bWrite=1\n");
-        return IO_Null(pc, addr, bWrite, d, nCyclesLeft);
+      case 0x4: // Data Stream Push Port
+        pHDD->hd_buf[pHDD->hd_buf_ptr] = d;
+        pHDD->hd_buf_ptr = (pHDD->hd_buf_ptr + 1) % 512;
+        break;
     }
   }
 //  FrameRefreshStatus(DRAW_LEDS);  // update status area
