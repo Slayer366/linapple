@@ -172,3 +172,48 @@ be searched"_. Each directory is separated by a colon (`:`). Defaults
 to `/etc/xdg`.
 
 [xdg]: https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+
+## Building / Compiling:
+
+### Debian/Ubuntu packages necessary for building:
+
+```bash
+sudo apt install -y \
+build-essential \
+pkg-config \
+libcurl4-openssl-dev \
+zlib1g-dev \
+libzip-dev \
+libxext-dev \
+libcaca-dev \
+libpng-dev \
+libjpeg-dev \
+libtiff-dev \
+libwebp-dev \
+libssl-dev \
+libbz2-dev \
+libxcb1-dev \
+libslang2-dev \
+libncurses-dev \
+libzstd-dev \
+liblzma-dev \
+libgmp-dev \
+libsqlite3-dev \
+imagemagick
+```
+
+### Build SDL1 release:
+
+```bash
+cd linapple
+sudo apt install -y libsdl1.2-dev libsdl-image1.2-dev
+make -j$(nproc)
+```
+
+### Build SDL2 release:
+
+```bash
+cd linapple
+sudo apt install -y libsdl2-dev libsdl2-image-dev libgles2-mesa-dev
+make -j$(nproc) SDL2=1
+```
