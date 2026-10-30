@@ -829,9 +829,14 @@ void FrameDispatchMessage(SDL_Event *e) {// process given SDL event
 #ifdef SDL2
 
     case SDL_WINDOWEVENT:
-      if (e->window.event == SDL_WINDOWEVENT_RESIZED) {
+      if (e->window.event == SDL_WINDOWEVENT_RESIZED ||
+          e->window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
 
         g_WindowResized = false;
+
+        if (g_nAppMode == MODE_LOGO) {
+          VideoDisplayLogo();
+        }
 
         if ((g_nAppMode != MODE_LOGO) &&
             (g_nAppMode != MODE_DEBUG)) {
