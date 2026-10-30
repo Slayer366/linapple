@@ -1745,9 +1745,6 @@ void VideoDestroy() {
   }
   g_hLogoBitmap = NULL;
 #ifdef SDL2
-  assets->splash = NULL; // add by trngaje
-  assets->pm = NULL; // add by slayer366
-
   if (screen) {
     SDL_FreeSurface(screen);
   }
